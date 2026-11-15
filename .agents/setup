@@ -8,7 +8,15 @@ MARKER="$VENV/.resin-cpu-env-v1"
 PY="$VENV/bin/python"
 ln -sfn "$VENV" "$HOME/resin-venv"
 
+# models/cuda is importable (CPU construction and tests only; no CUDA wheels).
+ensure_cuda_models() {
+  if ! "$PY" -c "import resin_models_cuda" 2>/dev/null; then
+    uv pip install --python "$PY" --no-deps --no-build-isolation -e models/cuda
+  fi
+}
+
 if [ -f "$MARKER" ]; then
+  ensure_cuda_models
   if uv pip list --python "$PY" 2>/dev/null | grep -qi '^nvidia-'; then
     echo "nvidia-* packages found in $VENV; remove it and rerun" >&2
     exit 1
@@ -27,4 +35,5 @@ if uv pip list --python "$PY" | grep -i '^nvidia-'; then
   echo "unexpected nvidia-* packages" >&2
   exit 1
 fi
+ensure_cuda_models
 touch "$MARKER"
