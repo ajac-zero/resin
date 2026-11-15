@@ -35,7 +35,9 @@ def verify_reference_files(directory: Path = REFERENCE_DIR) -> dict[str, str]:
         if actual != expected[name]:
             problems.append(f"{name}: sha256 {actual} != {expected[name]}")
     if problems:
-        raise ValueError("reference files do not match SHA256SUMS: " + "; ".join(problems))
+        raise ValueError(
+            "reference files do not match SHA256SUMS: " + "; ".join(problems)
+        )
     return {name: expected[name] for name in REFERENCE_FILES}
 
 

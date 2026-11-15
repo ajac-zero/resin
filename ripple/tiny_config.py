@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -34,7 +34,12 @@ EXPECTED_DIFF_KEYS = frozenset(
     {*TINY_OVERRIDES, "layer_types", "hybrid_layer_pattern", "embed_scale"}
 )
 _IGNORED_KEYS = frozenset({"transformers_version", "dtype", "torch_dtype"})
-_SERIALIZATION_ONLY = ("architectures", "auto_map", "model_type", "transformers_version")
+_SERIALIZATION_ONLY = (
+    "architectures",
+    "auto_map",
+    "model_type",
+    "transformers_version",
+)
 
 
 def real_config_dict() -> dict[str, Any]:
@@ -43,7 +48,10 @@ def real_config_dict() -> dict[str, Any]:
 
 
 def tiny_layer_types(num_layers: int) -> list[str]:
-    return ["full_attention" if i % 5 == 4 else "sliding_attention" for i in range(num_layers)]
+    return [
+        "full_attention" if i % 5 == 4 else "sliding_attention"
+        for i in range(num_layers)
+    ]
 
 
 def tiny_config_dict() -> dict[str, Any]:
@@ -51,7 +59,9 @@ def tiny_config_dict() -> dict[str, Any]:
     config.update(TINY_OVERRIDES)
     layers = config["num_hidden_layers"]
     config["layer_types"] = tiny_layer_types(layers)
-    config["hybrid_layer_pattern"] = [int(t == "sliding_attention") for t in config["layer_types"]]
+    config["hybrid_layer_pattern"] = [
+        int(t == "sliding_attention") for t in config["layer_types"]
+    ]
     config["embed_scale"] = math.sqrt(config["hidden_size"])
     return config
 
@@ -119,10 +129,15 @@ def build_tiny_hf_model(
             else:
                 fan_in = parameter.shape[-1]
                 std = 1.0 if name.endswith("embed_tokens.weight") else fan_in**-0.5
-                if name.endswith(("gate_proj.weight", "up_proj.weight")) and clamp_stress:
+                if (
+                    name.endswith(("gate_proj.weight", "up_proj.weight"))
+                    and clamp_stress
+                ):
                     std = 1.5
                 elif name.endswith(("q_proj.weight", "k_proj.weight")):
                     std *= 2.0
                 values = std * torch.randn(parameter.shape, generator=generator)
             parameter.copy_(values)
-    return model.to(dtype).eval()
+    cast(Any, model).to(dtype=dtype)  # ty mis-types PreTrainedModel.to
+    model.eval()
+    return model

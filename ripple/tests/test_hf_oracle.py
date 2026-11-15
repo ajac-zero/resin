@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import pytest
 import torch
@@ -12,16 +13,16 @@ from ripple.reference.verify import REFERENCE_DIR, verify_reference_files
 from ripple.tiny_config import (
     build_tiny_config,
     build_tiny_hf_model,
-    real_config_diff,
     real_config_dict,
+    real_config_diff,
 )
 
 WINDOW = 8
-FP32 = {"rtol": 1e-5, "atol": 1e-5}
+FP32: dict[str, Any] = {"rtol": 1e-5, "atol": 1e-5}
 # bf16 keeps ~3 significant digits and different kernels/summation orders give
 # differences up to ~3e-2 (observed) on logits of magnitude ~4; 0.1 is the documented
 # budget for prefill-vs-cached comparisons.
-BF16 = {"rtol": 5e-2, "atol": 0.1}
+BF16: dict[str, Any] = {"rtol": 5e-2, "atol": 0.1}
 DTYPES = [(torch.float32, FP32), (torch.bfloat16, BF16)]
 
 
@@ -41,7 +42,9 @@ def _logits(model, ids, cache=None):
 
 def _decode_all(model, ids):
     cache = _cache(model)
-    return torch.cat([_logits(model, ids[:, i : i + 1], cache) for i in range(ids.shape[1])], 1)
+    return torch.cat(
+        [_logits(model, ids[:, i : i + 1], cache) for i in range(ids.shape[1])], 1
+    )
 
 
 @pytest.fixture(scope="module", params=DTYPES, ids=["fp32", "bf16"])
@@ -56,7 +59,12 @@ def test_reference_files_verify(tmp_path) -> None:
         "configuration_ricursive.py",
         "modeling_ricursive.py",
     }
-    for name in ("config.json", "SHA256SUMS", "configuration_ricursive.py", "modeling_ricursive.py"):
+    for name in (
+        "config.json",
+        "SHA256SUMS",
+        "configuration_ricursive.py",
+        "modeling_ricursive.py",
+    ):
         (tmp_path / name).write_bytes((REFERENCE_DIR / name).read_bytes())
     (tmp_path / "modeling_ricursive.py").write_bytes(
         (REFERENCE_DIR / "modeling_ricursive.py").read_bytes() + b"\n"
@@ -122,7 +130,9 @@ def test_chunked_prefill_matches_one_shot(model_and_tol, chunks) -> None:
 
 
 @pytest.mark.parametrize("prefix", [3, 9, 17])
-def test_verify_block_on_warm_cache_matches_sequential_decode(model_and_tol, prefix) -> None:
+def test_verify_block_on_warm_cache_matches_sequential_decode(
+    model_and_tol, prefix
+) -> None:
     model, tol = model_and_tol
     ids = _ids(prefix + 5, seed=4)
     block_cache, step_cache = _cache(model), _cache(model)
@@ -130,7 +140,11 @@ def test_verify_block_on_warm_cache_matches_sequential_decode(model_and_tol, pre
     _logits(model, ids[:, :prefix], step_cache)
     block = _logits(model, ids[:, prefix:], block_cache)
     steps = torch.cat(
-        [_logits(model, ids[:, i : i + 1], step_cache) for i in range(prefix, prefix + 5)], 1
+        [
+            _logits(model, ids[:, i : i + 1], step_cache)
+            for i in range(prefix, prefix + 5)
+        ],
+        1,
     )
     torch.testing.assert_close(block, steps, **tol)
     # The block's last row must also equal the full-sequence last row.
@@ -143,7 +157,7 @@ def test_sliding_cache_evicts_but_global_cache_grows() -> None:
     cache = _cache(model)
     _logits(model, ids, cache)
     for layer, kind in zip(cache.layers, model.config.layer_types, strict=True):
-        held = layer.keys.shape[2]
+        held = getattr(layer, "keys").shape[2]
         if kind == "full_attention":
             assert held == 28
         else:
@@ -204,7 +218,8 @@ def test_ffn_clamp_bounds_gate_and_up_activations() -> None:
     with torch.no_grad():
         gate, up = mlp.gate_proj(x), mlp.up_proj(x)
         expected = mlp.down_proj(
-            torch.nn.functional.silu(gate.clamp(max=threshold)) * up.clamp(-threshold, threshold)
+            torch.nn.functional.silu(gate.clamp(max=threshold))
+            * up.clamp(-threshold, threshold)
         )
         unclamped = mlp.down_proj(torch.nn.functional.silu(gate) * up)
         actual = mlp(x)
@@ -219,7 +234,11 @@ def test_generate_matches_manual_incremental_loop() -> None:
     steps = 10
     with torch.no_grad():
         generated = model.generate(
-            prompt, max_new_tokens=steps, do_sample=False, eos_token_id=None, pad_token_id=255
+            prompt,
+            max_new_tokens=steps,
+            do_sample=False,
+            eos_token_id=None,
+            pad_token_id=255,
         )
     cache = _cache(model)
     logits = _logits(model, prompt, cache)
