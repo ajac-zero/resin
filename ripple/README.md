@@ -55,8 +55,41 @@ PYO3_PYTHON="$PY" cargo clippy --locked --workspace --all-targets -- -D warnings
 * The tiny config has 20 query heads, so it shards at TP=1, 2 and 4 (KV heads
   replicated at TP=4) but not TP=8. The real model shards at TP=1, 2, 4, 8 and 16.
 
+## SM80 CUDA runner and GPUBox qualification
+
+`models/cuda/resin_models_cuda/ripple` is the BF16 Ampere+ CUDA runner
+(`RippleCudaRunner`): FlashInfer paged attention with the standard
+`1/sqrt(head_dim)` scale, a shared full/window KV arena (4 history pages per
+window page on the 80-layer and 5-layer models), TP via `attn_tp`/`expert_tp`,
+eager or full-CUDA-graph decode and breakable prefill FFN graphs. `num_layers=5`
+runs one `[S, S, S, S, G]` period at full width (~8.3 GB) through the same code.
+It imports without CUDA, `flashinfer` or `triton`; `models/cuda` is installed
+editable by `.agents/setup` (`--no-deps`, no CUDA wheels).
+
+* Norms are explicit torch ops matching the reference rounding
+  (`weight * rms(x).to(bf16)`); FlashInfer/Quack fused norms round once and can
+  differ by one bf16 ulp.
+* Scoring: `logprobs`/`top_logprobs`/`prompt_logprobs` use the CuTeDSL kernels
+  (`nvidia-cutlass-dsl`, `quack-kernels`, tested on SM80+); greedy/temperature
+  sampling and plain decode do not. `RippleCudaRunner.logits_observer` exposes the
+  raw last-token logits without scoring.
+* CPU tests: `models/cuda/tests/test_ripple_cuda_cpu.py` (HF parity, packing, CPU-first
+  TP sharding, 2-shard checkpoint, arena geometry, and the whole runner through
+  `Engine` against a torch stand-in for FlashInfer). GPU tests:
+  `models/cuda/tests/test_ripple_cuda_gpu.py` (skip without SM80+; TP=2 needs 2 GPUs).
+
+`ripple/gpu_qualify_5layer.py` is the single offline GPUBox harness: HF 5-layer oracle on
+`cuda:0`, Resin TP=1 (eager and CUDA graphs) and TP=2 over NCCL, per-step logit
+metrics against the oracle, pass gates and a JSON report. Try it without a GPU:
+
+```sh
+"$PY" ripple/gpu_qualify_5layer.py --help
+"$PY" ripple/gpu_qualify_5layer.py --dry-run --checkpoint-dir "$SNAPSHOT"
+```
+
 ## Non-claims
 
-CPU only: no GPU, CUDA, Modal or Azure runs, no performance or memory claims,
-no real 65B checkpoint was loaded, and TP is checked with an in-process
-simulated all-reduce rather than a real process group.
+No GPU, CUDA, Modal or Azure run has happened: the CUDA runner's FlashInfer calls,
+CUDA graphs and NCCL TP are unexecuted until the GPUBox run, no performance or
+memory claims are made, no real 65B checkpoint was loaded, and CPU TP checks use
+an in-process simulated all-reduce rather than a real process group.
