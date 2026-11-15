@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Idempotent CPU-only dev environment for resin + the Ripple oracle harness.
+# Venv: $HOME/.cache/resin-cpu-venv (symlink $HOME/resin-venv). Never installs CUDA wheels.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+VENV="$HOME/.cache/resin-cpu-venv"
+MARKER="$VENV/.resin-cpu-env-v1"
+PY="$VENV/bin/python"
+ln -sfn "$VENV" "$HOME/resin-venv"
+
+if [ -f "$MARKER" ]; then
+  if uv pip list --python "$PY" 2>/dev/null | grep -qi '^nvidia-'; then
+    echo "nvidia-* packages found in $VENV; remove it and rerun" >&2
+    exit 1
+  fi
+  echo "resin CPU env already prepared ($MARKER)"
+  exit 0
+fi
+
+command -v rustup >/dev/null && rustup toolchain install stable --profile minimal -c clippy
+uv venv --python 3.12 --allow-existing "$VENV"
+uv pip install --python "$PY" --extra-index-url https://download.pytorch.org/whl/cpu \
+  --index-strategy unsafe-best-match -r ripple/requirements-cpu.txt
+cargo fetch --locked
+PYO3_PYTHON="$PY" uv pip install --python "$PY" --no-deps --no-build-isolation -e . -e models/torch
+if uv pip list --python "$PY" | grep -i '^nvidia-'; then
+  echo "unexpected nvidia-* packages" >&2
+  exit 1
+fi
+touch "$MARKER"
