@@ -10,7 +10,9 @@ import torch
 from torch.nn import functional as F
 
 from resin_models_cuda.gemma4.edge_kernels import (
+    gate_up_gelu_m1,
     gelu_tanh_mul,
+    linear_m1,
     linear_gelu,
     norm_residual,
     sparse_gather_dot,
@@ -602,3 +604,73 @@ def test_no_split_schedule_is_invariant_and_graph_reads_changed_csr(
         torch.cuda.synchronize()
         assert wrapper._plan_info is frozen_plan
         torch.testing.assert_close(captured.float(), expected, rtol=0.02, atol=0.002)
+
+
+def _bf16_ulp_bound(reference):
+    # One BF16 rounding of the true value is at most half an ulp; allow one ulp.
+    return reference.abs().clamp_min(2.0**-126) * 2.0**-7
+
+
+@pytest.mark.parametrize("rows,columns", [(1536, 2048), (1536, 4096), (256, 1536), (1536, 256)])
+@torch.inference_mode()
+def test_m1_linear_matches_fp64_oracle_and_replays_changed_inputs(rows, columns):
+    torch.manual_seed(rows + columns)
+    layer = torch.nn.Linear(columns, rows, bias=False, dtype=torch.bfloat16, device="cuda")
+    layer.weight.copy_(torch.randn_like(layer.weight) * 0.05)
+    x = torch.randn(1, columns, dtype=torch.bfloat16, device="cuda")
+
+    def operation():
+        return linear_m1(layer, x)
+
+    graph, captured = _capture(operation)
+    for scale in (1.0, 30.0, 0.001):
+        x.copy_(torch.randn_like(x) * scale)
+        actual = operation()
+        oracle = (x.double() @ layer.weight.double().T)
+        assert torch.all((actual.double() - oracle).abs() <= _bf16_ulp_bound(oracle) + 1e-30)
+        baseline_error = (layer(x).double() - oracle).abs().max()
+        assert (actual.double() - oracle).abs().max() <= baseline_error * 1.01 + 1e-30
+        _assert_replay(graph, captured, actual)
+    # Cancellation: exact opposite weights must not leak a stale or nonzero sum.
+    x.fill_(1)
+    layer.weight[:, : columns // 2] = 0.25
+    layer.weight[:, columns // 2 :] = -0.25
+    assert linear_m1(layer, x).abs().max() == 0
+
+
+@pytest.mark.parametrize("width", [6144, 12288])
+@torch.inference_mode()
+def test_m1_gate_up_gelu_matches_fp64_oracle_and_replays(width):
+    torch.manual_seed(width)
+    gate = torch.nn.Linear(1536, width, bias=False, dtype=torch.bfloat16, device="cuda")
+    up = torch.nn.Linear(1536, width, bias=False, dtype=torch.bfloat16, device="cuda")
+    for layer in (gate, up):
+        layer.weight.copy_(torch.randn_like(layer.weight) * 0.05)
+    x = torch.randn(1, 1536, dtype=torch.bfloat16, device="cuda")
+
+    def operation():
+        fused = gate_up_gelu_m1(gate, up, x)
+        assert fused is not None
+        return fused
+
+    graph, captured = _capture(operation)
+    for scale in (1.0, 4.0):
+        x.copy_(torch.randn_like(x) * scale)
+        actual = operation()
+        g = (x.double() @ gate.weight.double().T)
+        u = (x.double() @ up.weight.double().T)
+        oracle = 0.5 * g * (1 + torch.tanh(0.7978845608028654 * (g + 0.044715 * g**3))) * u
+        existing = gelu_tanh_mul(gate(x), up(x))
+        assert torch.isfinite(actual).all()
+        assert (actual.double() - oracle).abs().max() <= (existing.double() - oracle).abs().max() * 1.5 + 1e-3
+        _assert_replay(graph, captured, actual)
+
+
+@torch.inference_mode()
+def test_m1_helpers_fall_back_outside_their_contract():
+    layer = torch.nn.Linear(1536, 1536, bias=False, dtype=torch.bfloat16, device="cuda")
+    x = torch.randn(2, 1536, dtype=torch.bfloat16, device="cuda")
+    torch.testing.assert_close(linear_m1(layer, x), layer(x), atol=0, rtol=0)
+    gate = torch.nn.Linear(1536, 6144, bias=False, dtype=torch.bfloat16, device="cuda")
+    assert gate_up_gelu_m1(gate, gate, x) is None
+    assert gate_up_gelu_m1(gate, gate, x[:1].float()) is None

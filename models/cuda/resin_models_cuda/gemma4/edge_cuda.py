@@ -31,7 +31,7 @@ from resin_models_cuda.gemma4.edge_checkpoint import (
     DEFAULT_REVISION,
     load_edge_model,
 )
-from resin_models_cuda.gemma4.edge_kernels import norm_residual
+from resin_models_cuda.gemma4.edge_kernels import linear_m1, norm_residual
 
 
 class _EdgeHiddenLease:
@@ -326,7 +326,9 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
                 keys[pages, offsets] = key.to(self._cache.dtype)
                 values[pages, offsets] = value.to(self._cache.dtype)
             attended = wrapper.run(query, (keys, values))
-            hidden = layer.self_attn.o_proj(attended.reshape(len(hidden), -1))
+            hidden = linear_m1(
+                layer.self_attn.o_proj, attended.reshape(len(hidden), -1)
+            )
             hidden = norm_residual(
                 hidden,
                 layer.post_attention_layernorm.weight,

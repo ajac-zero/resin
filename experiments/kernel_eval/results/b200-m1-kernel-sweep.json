@@ -1,0 +1,188 @@
+{
+  "status": "m1_kernel_sweep_only",
+  "gpu": "NVIDIA B200",
+  "triton": "3.9.0",
+  "results": [
+    {
+      "name": "o_local",
+      "N": 1536,
+      "K": 2048,
+      "cublas_us": 6.645000074058771,
+      "triton_us": 3.3144999761134386,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 2.004827310890693,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "o_global",
+      "N": 1536,
+      "K": 4096,
+      "cublas_us": 6.039499770849943,
+      "triton_us": 5.1299999468028545,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 1.1772904158827353,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.999999484649205
+    },
+    {
+      "name": "ple_gate",
+      "N": 256,
+      "K": 1536,
+      "cublas_us": 2.9285000637173653,
+      "triton_us": 1.9409999949857593,
+      "best": [
+        1,
+        1024,
+        8
+      ],
+      "speedup": 1.50875840869791,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0000000400264406
+    },
+    {
+      "name": "ple_proj",
+      "N": 1536,
+      "K": 256,
+      "cublas_us": 1.7849999712780118,
+      "triton_us": 1.4909999445080757,
+      "best": [
+        8,
+        256,
+        4
+      ],
+      "speedup": 1.197183123884646,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0000000330395231
+    },
+    {
+      "name": "qkv_local",
+      "N": 2560,
+      "K": 1536,
+      "cublas_us": 3.6975000984966755,
+      "triton_us": 3.700000001117587,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 0.9993243506432009,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "qkv_global",
+      "N": 5120,
+      "K": 1536,
+      "cublas_us": 4.666999913752079,
+      "triton_us": 4.898000042885542,
+      "best": [
+        2,
+        512,
+        2
+      ],
+      "speedup": 0.9528378670659678,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999999421603134
+    },
+    {
+      "name": "q_local",
+      "N": 2048,
+      "K": 1536,
+      "cublas_us": 3.7249999586492777,
+      "triton_us": 3.4680000972002745,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 1.0741060710051535,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "q_global",
+      "N": 4096,
+      "K": 1536,
+      "cublas_us": 4.141000099480152,
+      "triton_us": 4.492499865591526,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 0.9217585360873256,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999999481145065
+    },
+    {
+      "name": "down_6144",
+      "N": 1536,
+      "K": 6144,
+      "cublas_us": 6.8755000829696655,
+      "triton_us": 6.697999779134989,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 1.0265004941307418,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999999049517304
+    },
+    {
+      "name": "down_12288",
+      "N": 1536,
+      "K": 12288,
+      "cublas_us": 9.32649988681078,
+      "triton_us": 11.42400037497282,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 0.8163952714184823,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "mlp_6144",
+      "N": 6144,
+      "K": 1536,
+      "current_path_us": 11.126999743282795,
+      "fused_us": 8.456500247120857,
+      "best": [
+        2,
+        512,
+        2
+      ],
+      "speedup": 1.3157925167768012,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.000403965252
+    },
+    {
+      "name": "mlp_12288",
+      "N": 12288,
+      "K": 1536,
+      "current_path_us": 16.646500676870346,
+      "fused_us": 14.128999784588814,
+      "best": [
+        1,
+        512,
+        2
+      ],
+      "speedup": 1.178179696416125,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0003395019296772
+    }
+  ],
+  "method": "L2-cold rotating weights, graph of 64 calls, configs swept per fixed shape, fp64 oracle ratios (candidate/baseline) over sampled weight copies, synthetic weights/inputs, one seed"
+}

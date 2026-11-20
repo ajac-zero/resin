@@ -1,0 +1,738 @@
+{
+  "status": "m1_gemm_study_only",
+  "gpu": "NVIDIA B200",
+  "torch": "2.15.0+cu132",
+  "triton": "3.9.0",
+  "l2_bytes": 132644864,
+  "results": [
+    {
+      "name": "q_local",
+      "N": 2048,
+      "K": 1536,
+      "weight_bytes": 6291456,
+      "rotating_copies": 85,
+      "cublas_us": 3.573999973013997,
+      "cublas_TBps": 1.760340248322481,
+      "triton_best": {
+        "us": 3.4505000803619623,
+        "TBps": 1.8233461392471602,
+        "BLOCK_N": 1,
+        "BLOCK_K": 1024,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.015594129916280508
+      },
+      "cublas_max_abs_err_vs_fp64": 0.015594129916280508,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.0357918822708967,
+      "top5": [
+        {
+          "us": 3.4505000803619623,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 3.538500051945448,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 3.5695000551640987,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 3.719500033184886,
+          "bn": 4,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 3.766499925404787,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "q_global",
+      "N": 4096,
+      "K": 1536,
+      "weight_bytes": 12582912,
+      "rotating_copies": 43,
+      "cublas_us": 4.127999767661095,
+      "cublas_TBps": 3.048186218074673,
+      "triton_best": {
+        "us": 4.561500158160925,
+        "TBps": 2.7585030283267806,
+        "BLOCK_N": 2,
+        "BLOCK_K": 512,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.017879349237773567
+      },
+      "cublas_max_abs_err_vs_fp64": 0.017879349237773567,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.9049653895716172,
+      "top5": [
+        {
+          "us": 4.561500158160925,
+          "bn": 2,
+          "bk": 512,
+          "warps": 2
+        },
+        {
+          "us": 4.5819999650120735,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 4.648999776691198,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 4.669500049203634,
+          "bn": 1,
+          "bk": 512,
+          "warps": 2
+        },
+        {
+          "us": 4.732000175863504,
+          "bn": 4,
+          "bk": 512,
+          "warps": 4
+        }
+      ]
+    },
+    {
+      "name": "kv_local",
+      "N": 256,
+      "K": 1536,
+      "weight_bytes": 786432,
+      "rotating_copies": 675,
+      "cublas_us": 2.919000107795,
+      "cublas_TBps": 0.2694182839870011,
+      "triton_best": {
+        "us": 1.9735000096261501,
+        "TBps": 0.39849607102306406,
+        "BLOCK_N": 2,
+        "BLOCK_K": 1024,
+        "warps": 4,
+        "max_abs_err_vs_fp64": 0.013931997964391485
+      },
+      "cublas_max_abs_err_vs_fp64": 0.013931997964391485,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.4790980965578817,
+      "top5": [
+        {
+          "us": 1.9735000096261501,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 1.9845000933855772,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 1.9859999883919954,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 1.9970000721514225,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 2.0089999306946993,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "kv_global",
+      "N": 512,
+      "K": 1536,
+      "weight_bytes": 1572864,
+      "rotating_copies": 338,
+      "cublas_us": 3.5810000263154507,
+      "cublas_TBps": 0.4392247943148846,
+      "triton_best": {
+        "us": 2.848000032827258,
+        "TBps": 0.5522696565556535,
+        "BLOCK_N": 1,
+        "BLOCK_K": 1024,
+        "warps": 4,
+        "max_abs_err_vs_fp64": 0.012620099820196629
+      },
+      "cublas_max_abs_err_vs_fp64": 0.012620099820196629,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.2573735902525713,
+      "top5": [
+        {
+          "us": 2.848000032827258,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 2.867500064894557,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 2.896500052884221,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 2.901500090956688,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 2.9285000637173653,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "o_local",
+      "N": 1536,
+      "K": 2048,
+      "weight_bytes": 6291456,
+      "rotating_copies": 85,
+      "cublas_us": 6.2905000522732735,
+      "cublas_TBps": 1.0001519668895609,
+      "triton_best": {
+        "us": 3.310499945655465,
+        "TBps": 1.9004549473733092,
+        "BLOCK_N": 1,
+        "BLOCK_K": 1024,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.01922114542685449
+      },
+      "cublas_max_abs_err_vs_fp64": 0.01922114542685449,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.9001661850285216,
+      "top5": [
+        {
+          "us": 3.310499945655465,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 3.3279999624937773,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 3.4294999204576015,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 3.4759999252855778,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 3.5439999774098396,
+          "bn": 4,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "o_global",
+      "N": 1536,
+      "K": 4096,
+      "weight_bytes": 12582912,
+      "rotating_copies": 43,
+      "cublas_us": 6.283999886363745,
+      "cublas_TBps": 2.0023730470309,
+      "triton_best": {
+        "us": 5.107500124722719,
+        "TBps": 2.4636146241275156,
+        "BLOCK_N": 1,
+        "BLOCK_K": 1024,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.029820593539625406
+      },
+      "cublas_max_abs_err_vs_fp64": 0.029820593539625406,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.2303474758514854,
+      "top5": [
+        {
+          "us": 5.107500124722719,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 5.165500100702047,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 5.5069997906684875,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 5.59999980032444,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 5.8245002292096615,
+          "bn": 4,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "gate_or_up_6144",
+      "N": 6144,
+      "K": 1536,
+      "weight_bytes": 18874368,
+      "rotating_copies": 29,
+      "cublas_us": 4.949499852955341,
+      "cublas_TBps": 3.8133889404462016,
+      "triton_best": {
+        "us": 5.239500198513269,
+        "TBps": 3.6023222225195606,
+        "BLOCK_N": 2,
+        "BLOCK_K": 512,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.01551176910288632
+      },
+      "cublas_max_abs_err_vs_fp64": 0.01551176910288632,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.9446511433208425,
+      "top5": [
+        {
+          "us": 5.239500198513269,
+          "bn": 2,
+          "bk": 512,
+          "warps": 2
+        },
+        {
+          "us": 5.40350005030632,
+          "bn": 4,
+          "bk": 512,
+          "warps": 4
+        },
+        {
+          "us": 5.693499930202961,
+          "bn": 8,
+          "bk": 512,
+          "warps": 4
+        },
+        {
+          "us": 5.798500031232834,
+          "bn": 8,
+          "bk": 512,
+          "warps": 8
+        },
+        {
+          "us": 6.014000158756971,
+          "bn": 16,
+          "bk": 512,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "down_6144",
+      "N": 1536,
+      "K": 6144,
+      "weight_bytes": 18874368,
+      "rotating_copies": 29,
+      "cublas_us": 6.650499999523163,
+      "cublas_TBps": 2.838037440997411,
+      "triton_best": {
+        "us": 6.668000016361475,
+        "TBps": 2.8305890752380605,
+        "BLOCK_N": 1,
+        "BLOCK_K": 1024,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.030345205101184547
+      },
+      "cublas_max_abs_err_vs_fp64": 0.030345205101184547,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.997375522376219,
+      "top5": [
+        {
+          "us": 6.668000016361475,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 6.777000147849321,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 7.040500175207853,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 7.4800001457333565,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 7.519000209867954,
+          "bn": 4,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "gate_or_up_12288",
+      "N": 12288,
+      "K": 1536,
+      "weight_bytes": 37748736,
+      "rotating_copies": 15,
+      "cublas_us": 7.627999875694513,
+      "cublas_TBps": 4.94870695007229,
+      "triton_best": {
+        "us": 8.342999964952469,
+        "TBps": 4.524599803257348,
+        "BLOCK_N": 4,
+        "BLOCK_K": 256,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.015611440874636173
+      },
+      "cublas_max_abs_err_vs_fp64": 0.015611440874636173,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.9142994016227316,
+      "top5": [
+        {
+          "us": 8.342999964952469,
+          "bn": 4,
+          "bk": 256,
+          "warps": 2
+        },
+        {
+          "us": 8.421000093221664,
+          "bn": 16,
+          "bk": 256,
+          "warps": 8
+        },
+        {
+          "us": 8.515999652445316,
+          "bn": 2,
+          "bk": 512,
+          "warps": 2
+        },
+        {
+          "us": 8.723500184714794,
+          "bn": 8,
+          "bk": 256,
+          "warps": 2
+        },
+        {
+          "us": 8.737999945878983,
+          "bn": 8,
+          "bk": 256,
+          "warps": 4
+        }
+      ]
+    },
+    {
+      "name": "down_12288",
+      "N": 1536,
+      "K": 12288,
+      "weight_bytes": 37748736,
+      "rotating_copies": 15,
+      "cublas_us": 9.250500239431858,
+      "cublas_TBps": 4.080723747142828,
+      "triton_best": {
+        "us": 11.350500397384167,
+        "TBps": 3.3257331992781185,
+        "BLOCK_N": 1,
+        "BLOCK_K": 1024,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.059358071492169984
+      },
+      "cublas_max_abs_err_vs_fp64": 0.059358071492169984,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.8149861165207947,
+      "top5": [
+        {
+          "us": 11.350500397384167,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 11.54400035738945,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 12.331999838352203,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 13.218999840319157,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 13.2835004478693,
+          "bn": 4,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "ple_gate",
+      "N": 256,
+      "K": 1536,
+      "weight_bytes": 786432,
+      "rotating_copies": 675,
+      "cublas_us": 2.919499995186925,
+      "cublas_TBps": 0.2693721532099703,
+      "triton_best": {
+        "us": 1.9690000917762518,
+        "TBps": 0.3994067868684318,
+        "BLOCK_N": 2,
+        "BLOCK_K": 1024,
+        "warps": 4,
+        "max_abs_err_vs_fp64": 0.01227219050633721
+      },
+      "cublas_max_abs_err_vs_fp64": 0.01227219050633721,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.4827322798919826,
+      "top5": [
+        {
+          "us": 1.9690000917762518,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 1.9735000096261501,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 4
+        },
+        {
+          "us": 1.9845000933855772,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 2
+        },
+        {
+          "us": 1.9934999290853739,
+          "bn": 1,
+          "bk": 1024,
+          "warps": 8
+        },
+        {
+          "us": 2.0409999415278435,
+          "bn": 2,
+          "bk": 1024,
+          "warps": 8
+        }
+      ]
+    },
+    {
+      "name": "ple_proj",
+      "N": 1536,
+      "K": 256,
+      "weight_bytes": 786432,
+      "rotating_copies": 675,
+      "cublas_us": 1.7935000360012054,
+      "cublas_TBps": 0.43849009434838476,
+      "triton_best": {
+        "us": 1.5134999994188547,
+        "TBps": 0.5196114967307366,
+        "BLOCK_N": 8,
+        "BLOCK_K": 256,
+        "warps": 4,
+        "max_abs_err_vs_fp64": 0.007410556077957153
+      },
+      "cublas_max_abs_err_vs_fp64": 0.007410556077957153,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 1.185001676042196,
+      "top5": [
+        {
+          "us": 1.5134999994188547,
+          "bn": 8,
+          "bk": 256,
+          "warps": 4
+        },
+        {
+          "us": 1.5384999569505453,
+          "bn": 16,
+          "bk": 256,
+          "warps": 8
+        },
+        {
+          "us": 1.5399999683722854,
+          "bn": 4,
+          "bk": 256,
+          "warps": 4
+        },
+        {
+          "us": 1.5414999797940254,
+          "bn": 8,
+          "bk": 256,
+          "warps": 8
+        },
+        {
+          "us": 1.5450000064447522,
+          "bn": 16,
+          "bk": 256,
+          "warps": 4
+        }
+      ]
+    },
+    {
+      "name": "gate_up_concat_6144",
+      "N": 12288,
+      "K": 1536,
+      "weight_bytes": 37748736,
+      "rotating_copies": 15,
+      "cublas_us": 7.750499993562698,
+      "cublas_TBps": 4.870490424018169,
+      "triton_best": {
+        "us": 8.331499993801117,
+        "TBps": 4.530845109294386,
+        "BLOCK_N": 4,
+        "BLOCK_K": 256,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.015552873839624226
+      },
+      "cublas_max_abs_err_vs_fp64": 0.015552873839624226,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.9302646581443078,
+      "top5": [
+        {
+          "us": 8.331499993801117,
+          "bn": 4,
+          "bk": 256,
+          "warps": 2
+        },
+        {
+          "us": 8.425000123679638,
+          "bn": 16,
+          "bk": 256,
+          "warps": 8
+        },
+        {
+          "us": 8.46800021827221,
+          "bn": 2,
+          "bk": 512,
+          "warps": 2
+        },
+        {
+          "us": 8.730500005185604,
+          "bn": 8,
+          "bk": 256,
+          "warps": 2
+        },
+        {
+          "us": 8.762500248849392,
+          "bn": 8,
+          "bk": 256,
+          "warps": 4
+        }
+      ]
+    },
+    {
+      "name": "gate_up_concat_12288",
+      "N": 24576,
+      "K": 1536,
+      "weight_bytes": 75497472,
+      "rotating_copies": 8,
+      "cublas_us": 13.4504996240139,
+      "cublas_TBps": 5.612986439939398,
+      "triton_best": {
+        "us": 13.565500266849995,
+        "TBps": 5.5654027138603315,
+        "BLOCK_N": 2,
+        "BLOCK_K": 512,
+        "warps": 2,
+        "max_abs_err_vs_fp64": 0.0156153857242316
+      },
+      "cublas_max_abs_err_vs_fp64": 0.0156153857242316,
+      "worst_error_ratio_triton_over_cublas_sampled": 1.0,
+      "speedup": 0.9915225652888658,
+      "top5": [
+        {
+          "us": 13.565500266849995,
+          "bn": 2,
+          "bk": 512,
+          "warps": 2
+        },
+        {
+          "us": 14.337999746203423,
+          "bn": 16,
+          "bk": 128,
+          "warps": 4
+        },
+        {
+          "us": 14.62399959564209,
+          "bn": 8,
+          "bk": 512,
+          "warps": 4
+        },
+        {
+          "us": 14.669000171124935,
+          "bn": 4,
+          "bk": 256,
+          "warps": 2
+        },
+        {
+          "us": 14.850500039756298,
+          "bn": 16,
+          "bk": 256,
+          "warps": 8
+        }
+      ]
+    }
+  ],
+  "method": "graph of 64 linear calls cycling through enough distinct weight copies to exceed 4x L2; cuBLAS is F.linear; Triton configs swept per fixed model shape; one seed; synthetic random weights"
+}

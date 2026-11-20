@@ -446,3 +446,60 @@ Bandwidth arithmetic (not a measurement): the GEMM bucket alone is ~2.5x the
 ~0.65 ms weight-read floor for ~4.4 GB at ~7 TB/s, so M=1 GEMM efficiency and
 split-K behavior are the largest candidate; attention and the many small
 norm/residual launches are the next.
+
+## M=1 projection and fused gate/up/GELU kernels (decode latency)
+
+**Why:** the fused-GELU profile put 54% of per-token kernel time in GEMMs. A
+separate L2-cold study (`modal_gemv.py`, `modal_gemv2.py`; results
+`b200-m1-gemm-study.json`, `b200-m1-kernel-sweep.json`; weights rotate through
+>4x the 132.6 MB L2 so repeated calls cannot hit cache) found that cuBLAS is already
+efficient on the big MLP matrices (4-5.6 TB/s) but latency-bound on small M=1 ones.
+The model already packs Q/K/V into one `qkv_proj` GEMM (my first estimate treated
+K and V as separate launches and overstated that bucket).
+
+**Kernels (fork):** `_linear_m1` (FP32 accumulate, one BF16 rounding of the result,
+no FMA contraction) and `_gate_up_gelu_m1` (keeps both BF16 rounds: gate and up
+outputs are rounded before GELU, the GELU output is rounded before the multiply,
+matching the eager expression). Per-shape configs are pinned from the sweep and
+only shapes that beat cuBLAS in isolation are enabled: o_proj (1536x2048 -> x2.00,
+1536x4096 -> x1.18), PLE gate (256x1536 -> x1.51), PLE projection (1536x256 -> x1.20),
+fused gate+up+GELU (6144 -> x1.32, 12288 -> x1.18). QKV, Q and down-projection
+stay on cuBLAS (no win). Guards require exactly one row of contiguous BF16 CUDA
+data, no bias and inference mode; anything else falls back to the original module.
+Batch>1 decode, speculative verification (M=4) and prefill are NOT affected and NOT
+optimized by this change.
+
+**Correctness evidence:**
+- Kernel level: fp64-oracle error is the same as cuBLAS's in every swept shape
+  (max and mean error ratio 1.00, sampled weight copies); 7 new B200 pytest cases
+  pass (fp64 oracle, scale 1/30/0.001, exact-cancellation case, changed-input CUDA
+  graph replay, and fallback outside the contract); Modal run ap-ODrTIzyE44AtcUt5mxNaPt.
+  Reduction order differs from cuBLAS, so results are NOT bit-identical to the old path.
+- Engine level, real prompts (WildChat; see `prepare_wildchat_prompts.py`; this
+  workload is code/paste heavy because Resin's packing picks the longest user turns):
+  6 prompts at 128-1024 tokens (4 distinct greedy continuations, so ~84 compared
+  steps), 22 greedy tokens each. Fused-GELU-only vs +M=1 kernels: **all token IDs
+  identical**; on equal-history steps the top-1 logit differs by at most 0.25
+  (median 0-0.125), i.e. one or two BF16 steps at these magnitudes. Results
+  `b200-resin-real-{base,m1}-draft0.json`, runs ap-pBJK5KPru2QJ3Fwh3924r5 and
+  ap-mBqjnjdpQVO8nPTboexOot.
+- Warning from the synthetic random-token workload: there the same two variants
+  diverged greedy tokens at position 13 and some top-1 logits differed by up to
+  ~4 with identical history (`b200-resin-diag-*.json`). The baseline's own margin
+  at the flip was only 0.094 (a near-tie), and random-token prompts put the model
+  far from its training distribution, so I do not treat it as evidence of an error;
+  but it shows the kernels are not numerically invariant to cuBLAS on
+  out-of-distribution inputs. Not yet checked: baseline-vs-baseline run-to-run
+  determinism, longer generations, other prompt types, or a high-precision oracle.
+
+**Speed (draft 0, batch 1, synthetic prompts, 256 context; no diagnostic hook):**
+decode median 2.961 -> 2.886 (fused GELU) -> **2.582 ms/token** (all M=1 kernels);
+-12.8% from the unmodified upstream path, -10.5% from the GELU step; every one
+of 16 steps in range 2.575-2.708 ms. Kernels per token 795 -> 725 -> 648.
+Single run each, not interleaved; synthetic prompts. Real-prompt A/B timings
+(`b200-resin-real-*.json`) are INVALID in absolute terms because the diagnostic
+hook synchronizes and writes every step (decode ~3.2-3.9 ms with it); only their
+paired difference (~0.25-0.27 ms at every context, consistent with the synthetic
+result) is informative. Prefill timings in the same runs are noise-level
+(7.7-17.5 ms across identical configurations; n=3): a bimodal prefill result
+has appeared in three separate runs and is unexplained.

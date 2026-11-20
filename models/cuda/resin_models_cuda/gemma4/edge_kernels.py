@@ -82,6 +82,78 @@ def linear_gelu(
     return torch._addmm_activation(zero_bias, hidden, weight.t(), use_gelu=True)
 
 
+# Pinned from the B200 M=1 sweep (experiments/kernel_eval/results/b200-m1-kernel-sweep.json):
+# (rows, columns) -> (BLOCK_N, BLOCK_K, num_warps). Only shapes that beat cuBLAS are listed.
+_M1_LINEAR = {
+    (1536, 2048): (1, 1024, 2),
+    (1536, 4096): (1, 1024, 2),
+    (256, 1536): (1, 1024, 8),
+    (1536, 256): (8, 256, 4),
+}
+_M1_GATE_UP = {(6144, 1536): (2, 512, 2), (12288, 1536): (1, 512, 2)}
+
+
+def _m1_ready(x: Tensor, weight: Tensor) -> bool:
+    return (
+        x.is_cuda
+        and x.dtype == torch.bfloat16
+        and weight.dtype == torch.bfloat16
+        and weight.device == x.device
+        and weight.ndim == 2
+        and x.numel() == weight.shape[1]
+        and x.is_contiguous()
+        and weight.is_contiguous()
+        and not torch.is_grad_enabled()
+    )
+
+
+def linear_m1(module, x: Tensor) -> Tensor:
+    """Bias-free one-row projection; falls back to ``module(x)`` outside the tuned set.
+
+    FP32 accumulation with one BF16 rounding, like the eager BF16 projection. The
+    reduction order differs from cuBLAS, so results can differ by BF16 rounding.
+    """
+    weight = module.weight
+    config = _M1_LINEAR.get(tuple(weight.shape)) if module.bias is None else None
+    if config is None or not _m1_ready(x, weight):
+        return module(x)
+    from resin_models_cuda.gemma4.edge_kernels_triton import launch_linear_m1
+
+    output = torch.empty(
+        (*x.shape[:-1], weight.shape[0]), dtype=x.dtype, device=x.device
+    )
+    block_n, block_k, warps = config
+    launch_linear_m1(
+        x, weight, output, block_n=block_n, block_k=block_k, num_warps=warps
+    )
+    return output
+
+
+def gate_up_gelu_m1(gate_proj, up_proj, x: Tensor) -> Tensor | None:
+    """Fused ``gelu_tanh(gate(x)) * up(x)`` for one row, or None outside the tuned set."""
+    gate, up = gate_proj.weight, up_proj.weight
+    config = _M1_GATE_UP.get(tuple(gate.shape))
+    if (
+        config is None
+        or gate_proj.bias is not None
+        or up_proj.bias is not None
+        or gate.shape != up.shape
+        or not _m1_ready(x, gate)
+        or not _m1_ready(x, up)
+    ):
+        return None
+    from resin_models_cuda.gemma4.edge_kernels_triton import launch_gate_up_gelu_m1
+
+    output = torch.empty(
+        (*x.shape[:-1], gate.shape[0]), dtype=x.dtype, device=x.device
+    )
+    block_n, block_k, warps = config
+    launch_gate_up_gelu_m1(
+        x, gate, up, output, block_n=block_n, block_k=block_k, num_warps=warps
+    )
+    return output
+
+
 def gelu_tanh_mul(gate: Tensor, up: Tensor) -> Tensor:
     """Fuse GELU and multiply while retaining the BF16 GELU output round."""
     if (
@@ -276,6 +348,8 @@ __all__ = [
     "sparse_gather_dot",
     "linear_gelu",
     "gelu_tanh_mul",
+    "linear_m1",
+    "gate_up_gelu_m1",
     "strided_qk_rmsnorm_rope",
     "norm_residual",
     "UniformCausalPagedVerifyWrapper",

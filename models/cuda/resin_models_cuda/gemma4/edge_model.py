@@ -236,6 +236,12 @@ class Gemma4EdgeMLP(nn.Module):
                 zero_bias=self.gelu_zero_bias,
             ).reshape(*hidden.shape[:-1], self.intermediate_size)
             return self.down_proj(gate * self.up_proj(hidden))
+        if hidden.is_cuda:
+            from resin_models_cuda.gemma4.edge_kernels import gate_up_gelu_m1, linear_m1
+
+            fused = gate_up_gelu_m1(self.gate_proj, self.up_proj, hidden)
+            if fused is not None:
+                return linear_m1(self.down_proj, fused)
         return self.down_proj(
             _gelu_tanh_mul(self.gate_proj(hidden), self.up_proj(hidden))
         )
@@ -286,8 +292,13 @@ class Gemma4EdgeDecoderLayer(nn.Module):
                 eps=self.post_feedforward_layernorm.eps,
             )
             residual = hidden
-            hidden = self.per_layer_projection(
-                _gelu_tanh_mul(self.per_layer_input_gate(hidden), per_layer_input)
+            from resin_models_cuda.gemma4.edge_kernels import linear_m1
+
+            hidden = linear_m1(
+                self.per_layer_projection,
+                _gelu_tanh_mul(
+                    linear_m1(self.per_layer_input_gate, hidden), per_layer_input
+                ),
             )
             return norm_residual(
                 hidden,

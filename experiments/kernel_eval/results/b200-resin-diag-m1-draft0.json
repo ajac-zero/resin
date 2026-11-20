@@ -1,0 +1,317 @@
+{
+  "diag_logits": [
+    "{\"values\": [15.5, 11.5, 10.625, 9.1875, 8.75], \"ids\": [17964, 1, 107, 106, 89073]}",
+    "{\"values\": [20.875, 11.25, 11.25, 11.0625, 9.8125], \"ids\": [7765, 17667, 6400, 236792, 145868]}",
+    "{\"values\": [8.5, -0.6328125, -0.77734375, -0.77734375, -0.953125], \"ids\": [4928, 2072, 1996, 783, 2870]}",
+    "{\"values\": [8.125, -2.65625, -3.140625, -3.8125, -4.21875], \"ids\": [28628, 14893, 3494, 2730, 46960]}",
+    "{\"values\": [0.8984375, -6.28125, -6.5625, -7.0, -7.1875], \"ids\": [27689, 224289, 236757, 93739, 179382]}",
+    "{\"values\": [11.8125, 3.484375, 2.328125, 0.4765625, -0.056640625], \"ids\": [27333, 50248, 35756, 185650, 145827]}",
+    "{\"values\": [7.96875, 2.046875, 1.921875, 1.6171875, 1.4375], \"ids\": [18945, 3056, 121928, 76853, 109]}",
+    "{\"values\": [7.78125, 0.458984375, 0.012451171875, -0.2099609375, -0.396484375], \"ids\": [21065, 23165, 131565, 129811, 59084]}",
+    "{\"values\": [7.1875, 4.78125, 3.84375, 3.5, 3.203125], \"ids\": [18407, 236761, 41463, 21233, 12322]}",
+    "{\"values\": [5.09375, -0.921875, -1.578125, -1.7578125, -1.8125], \"ids\": [9338, 8884, 107, 15004, 9212]}",
+    "{\"values\": [11.5, 1.875, 1.28125, 0.54296875, 0.412109375], \"ids\": [24759, 18369, 84518, 101, 5307]}",
+    "{\"values\": [7.40625, 1.1953125, 0.1376953125, 0.0947265625, -0.5703125], \"ids\": [27505, 5945, 9585, 236792, 17639]}",
+    "{\"values\": [-6.125, -6.78125, -6.96875, -7.0625, -7.5], \"ids\": [236761, 9338, 21233, 25417, 12322]}",
+    "{\"values\": [1.6328125, 0.98828125, 0.5546875, 0.337890625, 0.2470703125], \"ids\": [101, 106, 9338, 107, 236743]}",
+    "{\"values\": [13.125, 10.25, 9.375, 9.375, 7.3125], \"ids\": [106, 1, 107, 17964, 101]}",
+    "{\"values\": [10.0, 3.734375, 3.71875, 3.40625, 1.7578125], \"ids\": [106, 1, 107, 108, 101]}",
+    "{\"values\": [8.8125, 1.0859375, 0.546875, -0.275390625, -3.734375], \"ids\": [106, 1, 108, 107, 49]}",
+    "{\"values\": [6.0625, -1.9375, -2.6875, -3.546875, -6.3125], \"ids\": [106, 1, 108, 107, 49]}",
+    "{\"values\": [7.1875, -0.6015625, -0.8046875, -2.890625, -4.6875], \"ids\": [106, 108, 1, 107, 101]}",
+    "{\"values\": [9.375, 3.171875, 2.984375, -0.030029296875, -1.1953125], \"ids\": [106, 108, 1, 107, 101]}",
+    "{\"values\": [9.5625, 3.359375, 2.578125, -0.443359375, -1.7265625], \"ids\": [106, 108, 1, 107, 100]}"
+  ],
+  "trace_summary": null,
+  "status": "experimental_resin_b200_baseline",
+  "torch": "2.15.0+cu132",
+  "gpu": "NVIDIA B200",
+  "records": [
+    {
+      "schema_version": 1,
+      "phase": "prefill",
+      "context_length": 256,
+      "shared_prefix_tokens": 0,
+      "private_prompt_tokens": 256,
+      "cached_tokens_min": 0,
+      "cached_tokens_max": 0,
+      "batch_size": 1,
+      "global_batch_size": 1,
+      "measured_global_batch_size_min": 1,
+      "measured_global_batch_size_max": 1,
+      "gpu_count": 1,
+      "attn_dp": 1,
+      "prefill_tokens": 256.0,
+      "input_tokens": 768,
+      "draft_tokens": 0,
+      "measured_accept_rate": null,
+      "balanced_experts": false,
+      "balanced_experts_scope": null,
+      "warmup_steps": 1,
+      "measure_steps": 3,
+      "step_seconds": [
+        0.01836359199998583,
+        0.01789072799999758,
+        0.017860570999999936
+      ],
+      "prefill_seconds": [
+        0.01836359199998583,
+        0.01789072799999758,
+        0.017860570999999936
+      ],
+      "prefill_warmup_cohorts": 1,
+      "prefill_measure_cohorts": 3,
+      "window_seconds": 0.054114890999983345,
+      "committed_tokens": 3,
+      "measured_context_start_min": 0,
+      "measured_context_start_max": 0,
+      "measured_context_end_min": 256,
+      "measured_context_end_max": 256,
+      "graph_counts": {
+        "decode.replay_count": 0,
+        "decode.eager_fallback_count": 0,
+        "prefill.replay_count": 105,
+        "prefill.eager_fallback_count": 0
+      },
+      "runner_counts": {
+        "attention_plan_cache.hits": 0,
+        "attention_plan_cache.misses": 0,
+        "attention_metadata.device_rebuilds": 0,
+        "device_completion.enqueues": 0,
+        "device_hidden.allocations": 0,
+        "device_feedback.continuations": 0
+      },
+      "overlap_counts": {
+        "enqueues": 0,
+        "continuations": 0
+      },
+      "metadata": {
+        "model": "gemma4-e2b",
+        "implementation": "resin",
+        "implementation_version": "0.1.0",
+        "checkpoint": "/opt/model",
+        "hardware": "NVIDIA B200",
+        "parallelism": {
+          "world_size": 1,
+          "attn_dp": 1,
+          "attn_tp": 1,
+          "cp": 1,
+          "ep": 1
+        },
+        "graphs": {
+          "prefill": "breakable",
+          "decode": "full"
+        },
+        "quant": "checkpoint",
+        "expert_backend": "flashinfer",
+        "load_seconds": 8.241872238000001,
+        "capture_seconds": 119.21459792399999,
+        "profile_graph_phases": false,
+        "overlap": true,
+        "timing": "continuous_completions",
+        "prefill_chunk_size": 1024,
+        "context_capacity": 280,
+        "max_batch_tokens": 1024,
+        "capacity_skipped_cases": [],
+        "cache_capacity_probes": [],
+        "configured_batch_capacity": 1,
+        "requested_decode_batch_catalog": [
+          1
+        ],
+        "cache_capacity": {
+          "total_memory_bytes": 191512838144,
+          "free_memory_bytes": 181281095680,
+          "memory_utilization": 0.15,
+          "protected_free_bytes": 162785912423,
+          "overhead_bytes": 369098752,
+          "cache_budget_bytes": 18126084505,
+          "bytes_per_parent": 786432,
+          "reserved_parent_count": 1,
+          "parent_capacity": 23047,
+          "allocation_bytes": 18125684736
+        },
+        "max_prefill_tokens": 131072,
+        "budget_skipped_cases": [],
+        "prompt_workload": {
+          "prompt_source_id": "deterministic-token-ids-v1"
+        },
+        "sampling": {
+          "temperature": 0.0,
+          "top_p": 1.0,
+          "top_k": null,
+          "seed": 41
+        },
+        "sampling_filter_order": "top-p-then-top-k",
+        "repeat": 1
+      },
+      "local_output_token_ids": [
+        [
+          8509
+        ]
+      ],
+      "numa": {
+        "mode": "off",
+        "bindings": [
+          null
+        ]
+      }
+    },
+    {
+      "schema_version": 1,
+      "phase": "decode",
+      "context_length": 256,
+      "shared_prefix_tokens": 0,
+      "private_prompt_tokens": 256,
+      "cached_tokens_min": 0,
+      "cached_tokens_max": 0,
+      "batch_size": 1,
+      "global_batch_size": 1,
+      "measured_global_batch_size_min": 1,
+      "measured_global_batch_size_max": 1,
+      "gpu_count": 1,
+      "attn_dp": 1,
+      "prefill_tokens": 0.0,
+      "input_tokens": 0,
+      "draft_tokens": 0,
+      "measured_accept_rate": null,
+      "balanced_experts": false,
+      "balanced_experts_scope": null,
+      "warmup_steps": 4,
+      "measure_steps": 16,
+      "step_seconds": [
+        0.004071027999998478,
+        0.00411963799999171,
+        0.004059311000020216,
+        0.004072924999974248,
+        0.004077651000017113,
+        0.004055399000009174,
+        0.004069311999984393,
+        0.004099375999999211,
+        0.004097731000001659,
+        0.004125453000000334,
+        0.004098778000013681,
+        0.004090507000000798,
+        0.004073595999983581,
+        0.00408900400000789,
+        0.0040659889999972165,
+        0.004111497999986113
+      ],
+      "window_seconds": 0.06537719599998582,
+      "committed_tokens": 16,
+      "measured_context_start_min": 260,
+      "measured_context_start_max": 260,
+      "measured_context_end_min": 276,
+      "measured_context_end_max": 276,
+      "graph_counts": {
+        "decode.replay_count": 16,
+        "decode.eager_fallback_count": 0,
+        "prefill.replay_count": 0,
+        "prefill.eager_fallback_count": 0
+      },
+      "runner_counts": {
+        "attention_plan_cache.hits": 32,
+        "attention_plan_cache.misses": 0,
+        "attention_metadata.device_rebuilds": 0,
+        "device_completion.enqueues": 16,
+        "device_hidden.allocations": 0,
+        "device_feedback.continuations": 16
+      },
+      "overlap_counts": {
+        "enqueues": 16,
+        "continuations": 16
+      },
+      "metadata": {
+        "model": "gemma4-e2b",
+        "implementation": "resin",
+        "implementation_version": "0.1.0",
+        "checkpoint": "/opt/model",
+        "hardware": "NVIDIA B200",
+        "parallelism": {
+          "world_size": 1,
+          "attn_dp": 1,
+          "attn_tp": 1,
+          "cp": 1,
+          "ep": 1
+        },
+        "graphs": {
+          "prefill": "breakable",
+          "decode": "full"
+        },
+        "quant": "checkpoint",
+        "expert_backend": "flashinfer",
+        "load_seconds": 8.241872238000001,
+        "capture_seconds": 119.21459792399999,
+        "profile_graph_phases": false,
+        "overlap": true,
+        "timing": "continuous_completions",
+        "prefill_chunk_size": 1024,
+        "context_capacity": 280,
+        "max_batch_tokens": 1024,
+        "capacity_skipped_cases": [],
+        "cache_capacity_probes": [],
+        "configured_batch_capacity": 1,
+        "requested_decode_batch_catalog": [
+          1
+        ],
+        "cache_capacity": {
+          "total_memory_bytes": 191512838144,
+          "free_memory_bytes": 181281095680,
+          "memory_utilization": 0.15,
+          "protected_free_bytes": 162785912423,
+          "overhead_bytes": 369098752,
+          "cache_budget_bytes": 18126084505,
+          "bytes_per_parent": 786432,
+          "reserved_parent_count": 1,
+          "parent_capacity": 23047,
+          "allocation_bytes": 18125684736
+        },
+        "max_prefill_tokens": 131072,
+        "budget_skipped_cases": [],
+        "prompt_workload": {
+          "prompt_source_id": "deterministic-token-ids-v1"
+        },
+        "sampling": {
+          "temperature": 0.0,
+          "top_p": 1.0,
+          "top_k": null,
+          "seed": 41
+        },
+        "sampling_filter_order": "top-p-then-top-k",
+        "repeat": 1
+      },
+      "local_output_token_ids": [
+        [
+          8509,
+          17964,
+          7765,
+          4928,
+          28628,
+          27689,
+          27333,
+          18945,
+          21065,
+          18407,
+          9338,
+          24759,
+          27505,
+          236761,
+          101,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106
+        ]
+      ],
+      "numa": {
+        "mode": "off",
+        "bindings": [
+          null
+        ]
+      }
+    }
+  ],
+  "limitations": "Minimal model-specific dependency image; experimental B200 overrides, not released preset; synthetic batch1 workload; serving baseline not yet independently qualified."
+}

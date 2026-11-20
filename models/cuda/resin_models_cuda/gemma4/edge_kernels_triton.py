@@ -419,3 +419,76 @@ def launch_reserved_paged_metadata(inputs, query_width, window, sampling_stride)
             triton.next_power_of_2(table.shape[1]),
             num_warps=4,
         )
+
+
+@triton.jit
+def _linear_m1(x, weight, output, N, K, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr):
+    """One-row BF16 projection; FP32 accumulate, one BF16 rounding of the result."""
+    rows = tl.program_id(0) * BLOCK_N + tl.arange(0, BLOCK_N)
+    accumulator = tl.zeros([BLOCK_N], tl.float32)
+    for start in range(0, K, BLOCK_K):
+        columns = start + tl.arange(0, BLOCK_K)
+        tile = tl.load(
+            weight + rows[:, None] * K + columns[None, :],
+            mask=(rows[:, None] < N) & (columns[None, :] < K),
+            other=0,
+        ).to(tl.float32)
+        vector = tl.load(x + columns, mask=columns < K, other=0).to(tl.float32)
+        accumulator += tl.sum(tile * vector[None, :], axis=1)
+    tl.store(output + rows, accumulator.to(tl.bfloat16), mask=rows < N)
+
+
+def launch_linear_m1(x, weight, output, *, block_n, block_k, num_warps):
+    rows, columns = weight.shape
+    cast(Any, _linear_m1)[(triton.cdiv(rows, block_n),)](
+        x,
+        weight,
+        output,
+        rows,
+        columns,
+        BLOCK_N=block_n,
+        BLOCK_K=block_k,
+        num_warps=num_warps,
+        enable_fp_fusion=False,
+    )
+
+
+@triton.jit
+def _gate_up_gelu_m1(
+    x, gate_weight, up_weight, output, N, K, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr
+):
+    """``gelu_tanh(bf16(x @ Wg.T)) * bf16(x @ Wu.T)`` with both BF16 rounds kept."""
+    rows = tl.program_id(0) * BLOCK_N + tl.arange(0, BLOCK_N)
+    gate_sum = tl.zeros([BLOCK_N], tl.float32)
+    up_sum = tl.zeros([BLOCK_N], tl.float32)
+    for start in range(0, K, BLOCK_K):
+        columns = start + tl.arange(0, BLOCK_K)
+        mask = (rows[:, None] < N) & (columns[None, :] < K)
+        offsets = rows[:, None] * K + columns[None, :]
+        vector = tl.load(x + columns, mask=columns < K, other=0).to(tl.float32)
+        gate = tl.load(gate_weight + offsets, mask=mask, other=0).to(tl.float32)
+        up = tl.load(up_weight + offsets, mask=mask, other=0).to(tl.float32)
+        gate_sum += tl.sum(gate * vector[None, :], axis=1)
+        up_sum += tl.sum(up * vector[None, :], axis=1)
+    g = gate_sum.to(tl.bfloat16).to(tl.float32)
+    u = up_sum.to(tl.bfloat16).to(tl.float32)
+    inner = 0.7978845608028654 * (g + 0.044715 * g * g * g)
+    activated = (0.5 * g) * (1.0 + libdevice.tanh(inner))
+    rounded = activated.to(tl.bfloat16).to(tl.float32)
+    tl.store(output + rows, rounded * u, mask=rows < N)
+
+
+def launch_gate_up_gelu_m1(x, gate_weight, up_weight, output, *, block_n, block_k, num_warps):
+    rows, columns = gate_weight.shape
+    cast(Any, _gate_up_gelu_m1)[(triton.cdiv(rows, block_n),)](
+        x,
+        gate_weight,
+        up_weight,
+        output,
+        rows,
+        columns,
+        BLOCK_N=block_n,
+        BLOCK_K=block_k,
+        num_warps=num_warps,
+        enable_fp_fusion=False,
+    )
