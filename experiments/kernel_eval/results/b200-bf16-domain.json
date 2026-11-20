@@ -1,0 +1,178 @@
+{
+  "status": "adversarial_probe_only",
+  "gpu_qualified": false,
+  "nan_policy": "exact BF16 bits including signed zeros; ignore only NaN payload/sign",
+  "gate_domain": "all 65536 BF16 encodings, eight up patterns; not all operand pairs",
+  "gpu": "NVIDIA B200",
+  "results": [
+    {
+      "up_pattern": "one",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "minus_one",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "zero",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "max_finite",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "min_subnormal",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "infinity",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "nan",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "up_pattern": "permuted_bits",
+      "elements": 65536,
+      "comparisons": {
+        "pytorch": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "triton": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        },
+        "changed_replay": {
+          "mismatches": 0,
+          "zero_sign_differences": 0,
+          "examples": []
+        }
+      }
+    }
+  ],
+  "numerical_gate_passed": true
+}

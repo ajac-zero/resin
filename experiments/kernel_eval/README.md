@@ -176,3 +176,38 @@ Rust build exposed a useful ownership constraint: Tensor::to_host_vec consumes
 its Tensor. Output is now Arc-owned for multiple host reads around replay. Two
 failed build attempts are retained in local audit logs; they allocated no GPU
 function. Delayed workspace compute meter reached $2.35, not a settled phase bill.
+
+## BF16-domain and bounded safety probes
+
+`modal run experiments/kernel_eval/modal_rust.py --approve-spend --adversarial`
+exercises every one of the 65,536 BF16 gate encodings (including signed zeros,
+subnormals, infinities and NaNs) against eight up patterns: +1, -1, +0, largest
+finite, smallest subnormal, +infinity, quiet NaN and a permutation of all encodings.
+This is **524,288 operand pairs, not the exhaustive two-operand Cartesian product**.
+All outputs match PyTorch and existing Resin Triton; changed-input graph outputs
+also match freshly computed PyTorch. The independent parent `bits.py` verdict
+requires identical bits, including zero/infinity signs, ignoring only NaN payload
+and sign. Five CPU tests cover malformed responses and intentional wrong outputs.
+No ULP tolerance is introduced. This probe policy is not a universal GPU oracle.
+
+Bit-array input/output avoids JSON NaN/Infinity/null ambiguities and preserves
+subnormals and signed zeros. Normal finite-number transport remains available.
+Results: `results/b200-bf16-domain.json`; final run:
+https://modal.com/apps/ajac-zero/main/ap-d65UWCa9o8u4Q0XLTFS2rL
+
+`--safety` sends 32 requests through one persistent Rust process, varying tails
+at 1/7/255/256/257/511/512/513 elements with seeded random BF16 encodings.
+All initial and changed-input outputs match PyTorch by numerical equality with
+NaN-class equivalence (unlike the domain probe, this older safety comparison
+ignores signed-zero differences). Independent sanitizer executions on a 257-tail
+case report memcheck 0 errors, racecheck 0 hazards/errors/warnings, initcheck
+0 errors. This is not a long-duration soak, leak proof, uninitialized-output
+write-coverage proof (output starts zeroed), cross-stream race proof or
+hostile-code isolation. Reusing the same process still allocates new tensors
+per request; it is not a persistent shared-buffer integration.
+Results: `results/b200-safety.json`; run:
+https://modal.com/apps/ajac-zero/main/ap-bKFI4Q5KL3CkUVIAm1RPEz
+
+The candidate and judge still share a container/filesystem. Keep
+`gpu_qualified=false`: these are recorded probes, not final secure acceptance.
+No serving-code change, dispatch replacement or engine speedup follows from them.
