@@ -211,3 +211,69 @@ https://modal.com/apps/ajac-zero/main/ap-bKFI4Q5KL3CkUVIAm1RPEz
 The candidate and judge still share a container/filesystem. Keep
 `gpu_qualified=false`: these are recorded probes, not final secure acceptance.
 No serving-code change, dispatch replacement or engine speedup follows from them.
+
+## Same-process bridge, frozen dispatch and held-out replication
+
+The owned-buffer subprocess benchmark is superseded for timing by
+`modal_bridge.py`, which builds a Rust cdylib from the SAME `kernels.rs` used by
+the standalone probe. Rust borrows PyTorch GPU pointers and its non-default
+stream; no device copies or subprocess/context switch occur in the Rust path.
+The owner keeps all buffers, the stream and the native handle alive through
+capture/replay, synchronizes, drops graphs, and destroys the handle in that order.
+This is a controlled FFI prototype, NOT a safe public API: raw pointer callers
+must uphold shape/device/nonaliasing/liveness obligations. Handles must not be
+used concurrently or destroyed while captured work can still replay. Only device
+0 and contiguous BF16 arrays up to 1,048,576 elements are supported. No model
+runner is modified. API obligations were read directly in cuda-core 0.4.0
+runtime.rs and cutile 0.4.0 tensor.rs/device operation sources.
+
+Benchmarks prewarm all paths, capture 100 calls per graph and randomize path
+order in each of 15 rounds. Same GPU/process/context/stream/input/output buffers;
+CUDA event measurement only. Output is poisoned before changed-input replay;
+input mutation and both output guards are checked. Aligned final runs use a
+16-byte aligned output slice with eight-element guards on both sides. Separate
+`*-misaligned-stress.json` artifacts preserve earlier two-byte-offset experiments;
+do not silently combine them. All three Rust block sizes 256/512/1024 pass
+correctness, guards and changed-input replay in every recorded study.
+
+The frozen experimental dispatch (chosen before held-out measurements) is:
+- n <= 12,288: Rust block 256
+- n <= 405,504: Rust block 512
+- larger: retain Triton
+
+**This rule is an analysis selection, not installed serving dispatch.** It isn't
+promoted to all shapes/hardware. Fixed tuning shapes and seven disjoint held-out
+shapes were tested, with two separate held-out GPU runs/random seeds. Bootstrap
+paired-round intervals are reproducible with `python experiments/kernel_eval/analyze_shared.py`.
+They describe within-run repetition, NOT population-level confidence across GPUs,
+clock states or production request mixes. Graphs repeatedly use cache-resident
+buffers; streaming/cache-cold and serving timings are not measured. PyTorch is
+only a sanity comparator and includes a copy into the common output; Triton is
+the optimized comparison used for all dispatch conclusions.
+
+Aligned tuning (seed 817): Triton/Rust256 at 6144 = 1.637/1.476 us and at
+12288 = 1.639/1.497 us. Frozen Rust512 held-out wins replicate: at 24576,
+1.858/1.544 and 1.813/1.526 us; at 190464, 1.983/1.744 and 1.957/1.731 us;
+at 393216, 2.090/1.972 and 2.078/1.955 us. At 780288 retain Triton; do NOT
+count the fallback's zero regression as a Rust performance win. Block 256 still
+loses badly at large sizes; block tuning helps but does not universally win.
+
+Runs: tuning ap-uVMxy2C6Ar7TgeQg6XXpJB; held-out ap-dwRNAXour05IMhOHxYpnTl
+and ap-AjutlJSp3baOlZavpk3Oor. Results `b200-shared-buffer-*.json`.
+One initial startup failed because a remote module imported a local-only module;
+that app was explicitly stopped and the import guarded with `modal.is_local()`.
+Its native build succeeded; the failed run is not a performance sample.
+
+**Decision:** stop spending optimization effort on this activation for now.
+The gain is real within this experiment, but small in absolute terms. Applying
+the aligned one-row savings to 15 width-6144 and 20 width-12288 layers yields
+only ~5.3 microseconds of kernel-time savings per decode step, CONDITIONAL on
+those standalone savings transferring unchanged. This is arithmetic, not an
+end-to-end prediction or bound (model cache/overlap/launch paths differ).
+Prioritize whole-model profiling and a trusted evaluator boundary before chasing
+more activation microseconds. Keep this operation as the evaluator regression
+fixture, not as evidence that a specialized engine beats tuned serving engines.
+The cdylib shares the judge address space and must never be presented as hostile
+candidate isolation. Secure acceptance still requires a separately reviewed
+artifact/launcher/isolation design, with trusted expected outputs unavailable to
+candidate host code and measured timing not supplied by a writable candidate.

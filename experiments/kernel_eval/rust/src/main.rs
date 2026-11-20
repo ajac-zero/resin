@@ -3,32 +3,8 @@ use half::bf16;
 use std::sync::Arc;
 use std::io::{self, BufRead};
 
-#[cutile::module]
-mod kernels {
-    use cutile::core::*;
-    #[cutile::entry()]
-    pub fn gelu_mul<const BLOCK: i32>(
-        g: &Tensor<bf16, {[-1]}>, u: &Tensor<bf16, {[-1]}>,
-        out: &mut Tensor<bf16, {[BLOCK]}>,
-    ) {
-        let block = get_tile_block_id().0;
-        let x: Tile<f32, {[BLOCK]}> = convert_tile(g.partition(shape![BLOCK]).load([block]));
-        let y: Tile<f32, {[BLOCK]}> = convert_tile(u.partition(shape![BLOCK]).load([block]));
-        let inner = (x + x*x*x*constant(0.044715f32, shape![BLOCK]))*constant(0.7978845608028654f32, shape![BLOCK]);
-        let a = (x*constant(0.5f32, shape![BLOCK]))*(tanh(inner)+constant(1.0f32, shape![BLOCK]));
-        let rounded: Tile<bf16, {[BLOCK]}> = convert_tile(a);
-        let rounded: Tile<f32, {[BLOCK]}> = convert_tile(rounded);
-        let result: Tile<bf16, {[BLOCK]}> = convert_tile(rounded*y);
-        out.store(result);
-    }
-    #[cutile::entry()]
-    pub fn change<const BLOCK: i32>(g: &mut Tensor<bf16, {[BLOCK]}>) {
-        let x: Tile<f32, {[BLOCK]}> = convert_tile(g.load());
-        let changed: Tile<bf16, {[BLOCK]}> = convert_tile(x + constant(0.5f32, shape![BLOCK]));
-        g.store(changed);
-    }
-
-}
+mod kernels;
+use kernels::kernels as gpu_kernels;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = Device::new(0)?;
     let stream = device.new_stream()?;
@@ -53,11 +29,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut g = api::copy_host_vec_to_device(&Arc::new(g)).sync_on(&stream)?;
         let u = api::copy_host_vec_to_device(&Arc::new(u)).sync_on(&stream)?;
         let mut out = api::zeros::<bf16>(&[n]).sync_on(&stream)?;
-        kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
+        gpu_kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
             .generics(vec!["256".into()]).sync_on(&stream)?;
         let graph = cutile::cuda_async::cuda_graph::CudaGraph::scope(&stream, |scope| {
             for _ in 0..100 {
-                scope.record(kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
+                scope.record(gpu_kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
                     .generics(vec!["256".into()]))?;
             }
             Ok(())
@@ -78,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let out = Arc::new(out);
         let host = (&out).to_host_vec().sync_on(&stream)?;
         let values: Vec<f32> = host.iter().map(|x| x.to_f32()).collect();
-        kernels::change((&mut g).partition([256])).generics(vec!["256".into()]).sync_on(&stream)?;
+        gpu_kernels::change((&mut g).partition([256])).generics(vec!["256".into()]).sync_on(&stream)?;
         graph.launch().sync_on(&stream)?;
         let changed = (&out).to_host_vec().sync_on(&stream)?;
         let output_bits: Vec<u16> = host.iter().map(|x| x.to_bits()).collect();
