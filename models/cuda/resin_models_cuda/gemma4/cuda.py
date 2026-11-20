@@ -1093,6 +1093,17 @@ class Gemma4CudaRunner(CudaRunner):
         shared_global = (self._cache.global_keys[-1], self._cache.global_values[-1])
 
         phase_timing = self._new_phase_timing("draft", "target_verify", "decode")
+        # Assistants that can use device-side plans (E2B) get them; others are unchanged.
+        plans = (
+            dict(
+                local_plan=assistant_local,
+                global_plan=assistant_global,
+                window_left=self.sliding_window - 1,
+                page_size=PAGE_SIZE,
+            )
+            if getattr(assistant, "fused_attention_plans", False)
+            else {}
+        )
 
         def launch() -> None:
             if phase_timing is not None:
@@ -1110,6 +1121,7 @@ class Gemma4CudaRunner(CudaRunner):
                     global_wrapper=assistant_global_wrapper,
                     local_kv=shared_local,
                     global_kv=shared_global,
+                    **plans,
                 )
                 last_ids = draft_logits.argmax(dim=-1)
                 draft_columns.append(last_ids)

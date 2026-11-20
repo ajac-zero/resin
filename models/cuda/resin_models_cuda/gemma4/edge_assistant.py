@@ -147,9 +147,133 @@ class Gemma4EdgeAssistantForCausalLM(Gemma4AssistantForCausalLM):
         self.masked_embedding = Gemma4EdgeMaskedEmbedder(config)
 
     _scale_inplace = False
+    # Tells the runner it may hand over device-side attention plans.
+    fused_attention_plans = True
 
     def logits(self, hidden: Tensor) -> Tensor:
         return self.masked_embedding(hidden, self.model.embed_tokens.weight)
+
+    def forward_step(
+        self,
+        inputs_embeds,
+        positions,
+        *,
+        local_wrapper,
+        global_wrapper,
+        local_kv,
+        global_kv,
+        local_plan=None,
+        global_plan=None,
+        window_left=None,
+        page_size=None,
+    ):
+        """One draft step with the tuned one-row kernels.
+
+        The same arithmetic as the reference step with fewer launches: fused
+        norm+residual(+layer scalar), one-row projections, a fused gate/up/GELU
+        and split-KV paged attention. Anything outside the one-row CUDA contract
+        (no plans, several rows, long global history) runs the original code.
+        """
+        if (
+            local_plan is None
+            or global_plan is None
+            or window_left is None
+            or page_size is None
+            or not inputs_embeds.is_cuda
+        ):
+            return super().forward_step(
+                inputs_embeds,
+                positions,
+                local_wrapper=local_wrapper,
+                global_wrapper=global_wrapper,
+                local_kv=local_kv,
+                global_kv=global_kv,
+            )
+        from resin_models_cuda.gemma4 import edge_kernels as kernels
+
+        hidden = kernels.linear_m1(self.pre_projection, inputs_embeds)
+        embeddings = {
+            kind: self.model.rotary_emb(positions, kind, hidden.dtype)
+            for kind in set(self.config.layer_types)
+        }
+        for layer in self.model.layers:
+            attention = layer.self_attn
+            residual = hidden
+            normalized = layer.input_layernorm(hidden)
+            cos, sin = embeddings[attention.layer_type]
+            query = kernels.linear_m1(attention.q_proj, normalized).view(
+                -1, attention.num_heads, attention.head_dim
+            )
+            query, _ = kernels.strided_qk_rmsnorm_rope(
+                query,
+                None,
+                attention.q_norm.weight,
+                None,
+                cos,
+                sin,
+                eps=attention.q_norm.eps,
+            )
+            local = attention.is_local
+            plan = local_plan if local else global_plan
+            keys, values = local_kv if local else global_kv
+            indptr = getattr(plan, "kv_indptr", None)
+            rows = query.shape[0]
+            capacity = (
+                len(plan.page_indices) // max(rows, 1) * page_size
+                if torch.is_tensor(indptr)
+                else 0
+            )
+            if (
+                torch.is_tensor(indptr)
+                and indptr.is_cuda
+                and len(indptr) == rows + 1
+                and query.shape[-1] in kernels._PAGED_DECODE
+                and keys.ndim == 4
+                and keys.shape[2] == 1
+                and (local or capacity <= kernels._PAGED_DECODE_GLOBAL_MAX_TOKENS)
+            ):
+                attended = kernels.paged_decode_q1(
+                    query,
+                    keys,
+                    values,
+                    indptr,
+                    plan.page_indices,
+                    plan.last_page_lengths,
+                    window_left=window_left if local else -1,
+                    page_size=page_size,
+                )
+            else:
+                attended = (local_wrapper if local else global_wrapper).run(
+                    query, (keys, values)
+                )
+            projected = kernels.linear_m1(
+                attention.o_proj, attended.reshape(len(hidden), -1)
+            )
+            hidden = kernels.norm_residual(
+                projected,
+                layer.post_attention_layernorm.weight,
+                residual,
+                eps=layer.post_attention_layernorm.eps,
+            )
+            residual = hidden
+            normalized = layer.pre_feedforward_layernorm(hidden)
+            activated = kernels.gate_up_gelu_m1(
+                layer.mlp.gate_proj, layer.mlp.up_proj, normalized
+            )
+            projected = (
+                layer.mlp(normalized)
+                if activated is None
+                else kernels.linear_m1(layer.mlp.down_proj, activated)
+            )
+            hidden = kernels.norm_residual(
+                projected,
+                layer.post_feedforward_layernorm.weight,
+                residual,
+                scale=layer.layer_scalar,
+                eps=layer.post_feedforward_layernorm.eps,
+            )
+        hidden = self.model.norm(hidden)
+        return self.logits(hidden), kernels.linear_m1(self.post_projection, hidden)
 
 
 def load_edge_assistant(model_path: str | Path, *, device, **_kwargs):

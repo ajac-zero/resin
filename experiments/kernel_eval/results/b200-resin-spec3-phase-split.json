@@ -1,0 +1,437 @@
+{
+  "status": "resin_ab_sequence",
+  "gpu": "NVIDIA B200",
+  "torch": "2.15.0+cu132",
+  "runs": [
+    {
+      "index": 0,
+      "mode": "full",
+      "wall_seconds": 90.76466512680054,
+      "records": [
+        {
+          "context": 256,
+          "step_seconds": [
+            0.004037197999991804,
+            0.00403783699999849,
+            0.004038058000006117,
+            0.0040440169999982345,
+            0.0040396180000072945,
+            0.004062006999987489,
+            0.004048467000004052,
+            0.004061937000003013,
+            0.0040473170000012715,
+            0.00404707799999926,
+            0.004051597000000129,
+            0.004044217000000572,
+            0.00404881800000112,
+            0.004041837000002602,
+            0.0040409369999991895,
+            0.004037417999995796,
+            0.0040598369999997885,
+            0.004038007999994875,
+            0.004042136999999002,
+            0.004036207000012837,
+            0.004042247999990423,
+            0.0040566469999987476,
+            0.004043586999998183,
+            0.004049718000004532
+          ],
+          "tokens": [
+            2730,
+            18275,
+            929,
+            56667,
+            569,
+            158604,
+            236764,
+            2185,
+            770,
+            76371,
+            2982,
+            78608,
+            1608,
+            236743,
+            236770,
+            236771,
+            236771,
+            236908,
+            759,
+            38433,
+            191003,
+            513,
+            236789,
+            602,
+            3393,
+            236764,
+            36067,
+            49760,
+            236789,
+            543,
+            503,
+            236789,
+            41791,
+            513,
+            236789,
+            54074,
+            569,
+            103425,
+            2947,
+            503,
+            236789,
+            716,
+            87024,
+            533,
+            2880,
+            723,
+            88915,
+            124777,
+            236761,
+            5213,
+            236798,
+            236789,
+            128055,
+            569,
+            759,
+            38433,
+            513,
+            236789,
+            602,
+            3393,
+            71574
+          ],
+          "graph_counts": {
+            "decode.replay_count": 24,
+            "decode.eager_fallback_count": 0,
+            "prefill.replay_count": 0,
+            "prefill.eager_fallback_count": 0
+          },
+          "window_seconds": 0.09709674699999482,
+          "committed_tokens": 46,
+          "accept_rate": 0.3055555555555556,
+          "phases": {}
+        }
+      ],
+      "trace_summary": {
+        "decode-ctx256-b1-rank000.json.gz": {
+          "phase_split_first_launch": {
+            "first_target_kernel_index": 452,
+            "draft_phase": {
+              "kernels": 452,
+              "sum_us": 1161.855,
+              "wall_us": 2824.478515625,
+              "top": [
+                {
+                  "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 8u, 32u, 4u, 1u, fl",
+                  "us": 128.064,
+                  "count": 9
+                },
+                {
+                  "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o256i64div81_tensorptrbf16_gmem_a",
+                  "us": 98.59199999999998,
+                  "count": 61
+                },
+                {
+                  "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::",
+                  "us": 94.97599999999998,
+                  "count": 41
+                },
+                {
+                  "name": "nvjet_sm100_tst_16x64_64x16_4x1_v_bz_TNN",
+                  "us": 88.992,
+                  "count": 33
+                },
+                {
+                  "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 16u, 32u, 4u, 1u, f",
+                  "us": 69.792,
+                  "count": 3
+                },
+                {
+                  "name": "nvjet_sm100_tst_32x64_64x16_4x1_v_bz_splitK_TNN",
+                  "us": 65.98400000000001,
+                  "count": 18
+                },
+                {
+                  "name": "void at::native::vectorized_elementwise_kernel<8, at::native::CUDAFunctor_add<c10::BFloat16>, std::array<char*",
+                  "us": 55.55200000000001,
+                  "count": 37
+                },
+                {
+                  "name": "nvjet_sm100_tst_8x64_64x16_4x1_v_bz_TNN",
+                  "us": 51.552,
+                  "count": 18
+                },
+                {
+                  "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv",
+                  "us": 37.919999999999995,
+                  "count": 18
+                },
+                {
+                  "name": "void at::native::sbtopk::gatherTopK<c10::BFloat16, unsigned int, 1, false>(at::cuda::detail::TensorInfo<c10::B",
+                  "us": 34.72,
+                  "count": 3
+                },
+                {
+                  "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::neg_kernel_cuda(at:",
+                  "us": 28.383999999999997,
+                  "count": 12
+                },
+                {
+                  "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<c10::BFloat16, at::native::ArgMaxOps<float>, unsig",
+                  "us": 26.816,
+                  "count": 3
+                },
+                {
+                  "name": "Memcpy HtoD (Pinned -> Device)",
+                  "us": 26.591000000000015,
+                  "count": 25
+                },
+                {
+                  "name": "void at::native::(anonymous namespace)::CatArrayBatchedCopy<at::native::(anonymous namespace)::OpaqueType<2u>,",
+                  "us": 25.823999999999998,
+                  "count": 12
+                }
+              ]
+            },
+            "verify_and_rest": {
+              "kernels": 785,
+              "sum_us": 3174.691,
+              "wall_us": 3033.47021484375,
+              "top": [
+                {
+                  "name": "nvjet_sm100_tst_128x8_64x12_4x1_v_bz_TNT",
+                  "us": 352.22200000000004,
+                  "count": 40
+                },
+                {
+                  "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+                  "us": 308.6400000000001,
+                  "count": 42
+                },
+                {
+                  "name": "_norm_residual",
+                  "us": 297.5699999999999,
+                  "count": 105
+                },
+                {
+                  "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 64",
+                  "us": 271.87399999999997,
+                  "count": 28
+                },
+                {
+                  "name": "nvjet_sm100_tst_16x64_64x16_4x1_v_bz_TNN",
+                  "us": 252.60800000000003,
+                  "count": 44
+                },
+                {
+                  "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_TNT",
+                  "us": 193.24599999999998,
+                  "count": 33
+                },
+                {
+                  "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o1536i64div81_tensorptrbf16_gmem_",
+                  "us": 165.53500000000003,
+                  "count": 71
+                },
+                {
+                  "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv",
+                  "us": 131.2,
+                  "count": 42
+                },
+                {
+                  "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::",
+                  "us": 125.72800000000004,
+                  "count": 35
+                },
+                {
+                  "name": "nvjet_sm100_tst_256x8_64x6_2x1_v_bz_TNT",
+                  "us": 124.064,
+                  "count": 1
+                },
+                {
+                  "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_",
+                  "us": 122.33500000000004,
+                  "count": 35
+                },
+                {
+                  "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_s16816gemm",
+                  "us": 115.139,
+                  "count": 35
+                },
+                {
+                  "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 16",
+                  "us": 93.47299999999998,
+                  "count": 7
+                },
+                {
+                  "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, __nv_bfloat",
+                  "us": 84.03299999999999,
+                  "count": 35
+                }
+              ]
+            }
+          },
+          "graph_launches": 2,
+          "kernel_events": 2474,
+          "gpu_busy_us_total": 8226.50244140625,
+          "gpu_span_us": 11471.4482421875,
+          "busy_over_span": 0.7171284974422315,
+          "sum_kernel_us_per_launch": 4337.2205,
+          "kernel_count_per_launch": 1237.0,
+          "top_kernels": [
+            {
+              "name": "nvjet_sm100_tst_128x8_64x12_4x1_v_bz_TNT",
+              "us_per_launch": 352.38249999999994,
+              "count_per_launch": 40.0
+            },
+            {
+              "name": "nvjet_sm100_tst_16x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 340.9100000000001,
+              "count_per_launch": 77.0
+            },
+            {
+              "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+              "us_per_launch": 307.8560000000001,
+              "count_per_launch": 42.0
+            },
+            {
+              "name": "_norm_residual",
+              "us_per_launch": 298.7369999999999,
+              "count_per_launch": 105.0
+            },
+            {
+              "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 64u, 1u, 4u, 16u, 16u, 4u, 1u, (",
+              "us_per_launch": 272.33650000000006,
+              "count_per_launch": 28.0
+            },
+            {
+              "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::",
+              "us_per_launch": 220.36799999999988,
+              "count_per_launch": 76.0
+            },
+            {
+              "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_TNT",
+              "us_per_launch": 199.27849999999998,
+              "count_per_launch": 36.0
+            },
+            {
+              "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true",
+              "us_per_launch": 169.59900000000002,
+              "count_per_launch": 60.0
+            },
+            {
+              "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o1536i64div81_tensorptrbf16_gmem_align16_o_4153601_None_None_te",
+              "us_per_launch": 165.9375,
+              "count_per_launch": 71.0
+            },
+            {
+              "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 8u, 32u, 4u, 1u, flashinfer::DefaultAttention<fal",
+              "us_per_launch": 127.87199999999999,
+              "count_per_launch": 9.0
+            },
+            {
+              "name": "nvjet_sm100_tst_256x8_64x6_2x1_v_bz_TNT",
+              "us_per_launch": 123.72749999999999,
+              "count_per_launch": 1.0
+            },
+            {
+              "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x6",
+              "us_per_launch": 122.12750000000004,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8::Pa",
+              "us_per_launch": 115.18600000000002,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, float*, int*,",
+              "us_per_launch": 107.52050000000001,
+              "count_per_launch": 37.0
+            },
+            {
+              "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o256i64div81_tensorptrbf16_gmem_align16_o_425601_None_None_tens",
+              "us_per_launch": 98.54399999999995,
+              "count_per_launch": 61.0
+            },
+            {
+              "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 16u, 1u, 1u, 32u, 32u, 1u, 4u, (",
+              "us_per_launch": 93.77599999999998,
+              "count_per_launch": 7.0
+            },
+            {
+              "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, __nv_bfloat16, __nv_bfloat16, __nv_bfloat",
+              "us_per_launch": 84.08050000000003,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void at::native::vectorized_elementwise_kernel<8, at::native::GeluCUDAKernelImpl(at::TensorIteratorBase&, at::native::GeluType)::{lambda()#1",
+              "us_per_launch": 75.99999999999996,
+              "count_per_launch": 47.0
+            },
+            {
+              "name": "_strided_qk_rmsnorm_rope",
+              "us_per_launch": 70.35249999999999,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 16u, 32u, 4u, 1u, flashinfer::DefaultAttention<fa",
+              "us_per_launch": 69.88799999999999,
+              "count_per_launch": 3.0
+            },
+            {
+              "name": "nvjet_sm100_tst_24x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 69.13550000000001,
+              "count_per_launch": 12.0
+            },
+            {
+              "name": "nvjet_sm100_tst_32x64_64x16_4x1_v_bz_splitK_TNN",
+              "us_per_launch": 66.12800000000001,
+              "count_per_launch": 18.0
+            },
+            {
+              "name": "_gelu_tanh_mul",
+              "us_per_launch": 62.17700000000002,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void at::native::vectorized_elementwise_kernel<8, at::native::CUDAFunctor_add<c10::BFloat16>, std::array<char*, 3ul>, false>(int, at::native",
+              "us_per_launch": 55.66449999999998,
+              "count_per_launch": 37.0
+            },
+            {
+              "name": "nvjet_sm100_tst_8x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 51.696000000000005,
+              "count_per_launch": 18.0
+            },
+            {
+              "name": "void at::native::sbtopk::gatherTopK<c10::BFloat16, unsigned int, 1, false>(at::cuda::detail::TensorInfo<c10::BFloat16 const, unsigned int>, ",
+              "us_per_launch": 36.208,
+              "count_per_launch": 3.0
+            },
+            {
+              "name": "void flashinfer::PersistentVariableLengthMergeStatesKernel<16u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, float*, int*",
+              "us_per_launch": 31.616500000000006,
+              "count_per_launch": 10.0
+            },
+            {
+              "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::neg_kernel_cuda(at::TensorIteratorBase&)::{lambda",
+              "us_per_launch": 28.368000000000006,
+              "count_per_launch": 12.0
+            },
+            {
+              "name": "_kv_append",
+              "us_per_launch": 28.063000000000002,
+              "count_per_launch": 15.0
+            },
+            {
+              "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<c10::BFloat16, at::native::ArgMaxOps<float>, unsigned int, long, 4, 4> >(at::nat",
+              "us_per_launch": 26.880000000000003,
+              "count_per_launch": 3.0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "method": "fresh engine per run in one container; order as given; decode graphs only; prompts WildChat-derived artifact"
+}

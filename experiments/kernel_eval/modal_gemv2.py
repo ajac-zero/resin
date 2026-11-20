@@ -9,7 +9,7 @@ image=(modal.Image.debian_slim(python_version='3.12').pip_install('torch==2.15.0
        else modal.Image.debian_slim())
 
 @app.function(image=image,gpu='B200',timeout=500,retries=0,max_containers=1,scaledown_window=2)
-def sweep(seed:int=57):
+def sweep(seed:int=57, only: str=''):
     import sys,itertools,statistics,importlib.util,triton,torch
     import torch.nn.functional as F
     spec=importlib.util.spec_from_file_location('ek','/opt/edge_kernels_triton.py');ek=importlib.util.module_from_spec(spec);spec.loader.exec_module(ek)
@@ -27,11 +27,14 @@ def sweep(seed:int=57):
     configs=[(bn,bk,nw) for bn,bk,nw in itertools.product((1,2,4,8),(128,256,512,1024),(2,4,8)) if bn*bk<=8192]
     linear_shapes={'o_local':(1536,2048),'o_global':(1536,4096),'ple_gate':(256,1536),'ple_proj':(1536,256),
                    'qkv_local':(2560,1536),'qkv_global':(5120,1536),'q_local':(2048,1536),'q_global':(4096,1536),
-                   'down_6144':(1536,6144),'down_12288':(1536,12288)}
+                   'down_6144':(1536,6144),'down_12288':(1536,12288),
+                   'asst_pre_proj':(256,3072),'asst_post_proj':(1536,256),'asst_q_local':(1024,256),'asst_q_global':(2048,256),
+                   'asst_o_local':(256,1024),'asst_o_global':(256,2048),'asst_down':(256,2048)}
     out=[]
     def make(N,K,scale=1.0):
         c=max(8,int(4*L2//(N*K*2))+1);return c
     for name,(N,K) in linear_shapes.items():
+        if only and not name.startswith(only):continue
         c=make(N,K);W=[torch.randn(N,K,dtype=torch.bfloat16,device='cuda')*0.05 for _ in range(c)]
         x=torch.randn(1,K,dtype=torch.bfloat16,device='cuda');y=torch.empty(N,dtype=torch.bfloat16,device='cuda')
         cub=timed(lambda i:F.linear(x,W[i%c]))
@@ -48,7 +51,8 @@ def sweep(seed:int=57):
         out.append({'name':name,'N':N,'K':K,'cublas_us':cub,'triton_us':best[0],'best':best[1:],'speedup':cub/best[0],
                     'max_err_ratio':max(a/max(b,1e-12) for a,b,_,_ in errs),'mean_err_ratio':max(a/max(b,1e-12) for _,_,a,b in errs)})
         del W
-    for name,(N,K) in {'mlp_6144':(6144,1536),'mlp_12288':(12288,1536)}.items():
+    for name,(N,K) in {'mlp_6144':(6144,1536),'mlp_12288':(12288,1536),'asst_mlp':(2048,256)}.items():
+        if only and not name.startswith(only):continue
         c=make(2*N,K);G=[torch.randn(N,K,dtype=torch.bfloat16,device='cuda')*0.05 for _ in range(c)];U=[torch.randn(N,K,dtype=torch.bfloat16,device='cuda')*0.05 for _ in range(c)]
         x=torch.randn(1,K,dtype=torch.bfloat16,device='cuda');y=torch.empty(N,dtype=torch.bfloat16,device='cuda')
         def cur(i):
@@ -76,6 +80,6 @@ def sweep(seed:int=57):
             'method':'L2-cold rotating weights, graph of 64 calls, configs swept per fixed shape, fp64 oracle ratios (candidate/baseline) over sampled weight copies, synthetic weights/inputs, one seed'}
 
 @app.local_entrypoint()
-def main(approve_spend:bool=False):
+def main(approve_spend:bool=False,only:str=''):
     if not approve_spend:raise RuntimeError('Explicit spending approval required')
-    print(json.dumps(sweep.remote(),indent=2))
+    print(json.dumps(sweep.remote(only=only),indent=2))

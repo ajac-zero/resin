@@ -619,3 +619,61 @@ are invalid; only logits are used).
   greedy token. Not observed in these 435 steps; 3 prompts is still a small sample.
 Remaining numeric gaps: no run against a high-precision (fp32/fp64) end-to-end oracle,
 no sampling (temperature>0) or long-context (>1K) comparison.
+
+## Speculative decoding (draft 3 + the official E2B assistant): baselines, profile, fused assistant
+
+**Why it matters:** speculative decoding is Resin's own default for this model and
+what vLLM/SGLang offer for interactive latency. All numbers below are ms per COMMITTED
+token at batch 1, greedy, the same six WildChat-derived prompts, one B200.
+
+**Baselines with the same assistant checkpoint** (`modal_engines.py`; vLLM 0.34.0
+`speculative_config={'model': assistant, 'num_speculative_tokens': 3}` which vLLM maps
+to its `gemma4_mtp`; SGLang 0.5.23 with its own documented E2B recipe `NEXTN`, 5 steps,
+6 draft tokens, top-k 1): vLLM MTP-3 1.05/1.96/1.96/1.77/2.06/2.07 ms at ctx
+128/256/384/512/768/1024; SGLang NEXTN 1.17/2.40/2.53/2.36/2.50/2.53. Both reproduce
+Resin's first 22 greedy tokens on every prompt. vLLM's MTP is faster than SGLang's
+recipe here (1-27%), and both are 12-60% faster than their own non-speculative decode
+(prompt dependent; acceptance varies from 0.27 to 0.79 across these prompts).
+Results `b200-vllm-mtp.json`, `b200-sglang-nextn.json`.
+
+**Resin speculative step profile** (`b200-resin-spec3-phase-split.json`, one graph launch,
+profiler-inflated): the DRAFT phase (3 assistant steps) is **452 kernels with only ~1.16
+ms of kernel time but ~2.8 ms of wall span** (GPU mostly idle between ~150 tiny
+launches per draft step); the verify phase is 785 kernels, ~3.2 ms busy. So the
+assistant, a 4-layer hidden-256 model, was dominated by launch latency, not work.
+
+**Fused assistant step (fork):** `Gemma4EdgeAssistantForCausalLM.forward_step` now uses the
+validated kernels (one-row projections with new configs for the assistant's shapes,
+`strided_qk_rmsnorm_rope` for the Q-only layers, fused norm+residual(+layer scalar),
+fused gate/up/GELU, split-KV paged attention reading the assistant's own device-side
+plans) with a fallback to the original code outside the contract. The runner passes the
+plans only to assistants declaring `fused_attention_plans` (31B assistant unchanged).
+Assistant M=1 shapes beat cuBLAS in isolation x1.25-2.8 with equal fp64 error
+(`b200-m1-assistant-sweep.json`). Test: a B200 pytest compares the fused step to the
+reference step with a real FlashInfer decode wrapper (random weights, 4 layers, 3 local + 1
+global, hidden 256) and checks that without plans the original path is bit-identical
+(ap-RrKWsDve04pa0gq8Mf2wIp).
+
+**Interleaved A/B in ONE container** (fresh engine per run, upstream/full x2,
+decode ms per committed token; rounds agree within ~2 us; `b200-resin-spec3-final-ab.json`,
+ap-8F97Q6uZMYpmIce1YndLD3):
+
+| ctx | accept | upstream | full | change | vLLM MTP-3 | SGLang NEXTN |
+|---|---:|---:|---:|---:|---:|---:|
+| 128 | 0.785 | 1.308 | 1.143 | -12.7% | 1.047 | 1.167 |
+| 256 | 0.396 | 2.004 | 1.755 | -12.6% | 1.964 | 2.404 |
+| 512 | 0.528 | 1.701 | 1.487 | -12.5% | 1.765 | 2.363 |
+| 1024 | 0.271 | 2.452 | 2.146 | -12.3% | 2.073 | 2.533 |
+
+Acceptance and committed-token counts are identical between configurations, and the first
+174 (ctx128; the faster config emitted 178 in its window) / 117 / 100+ greedy tokens match
+the upstream path on every prompt. Of the -12.5%, about -3.8% comes from the earlier target-side changes
+(fused GELU) and -9.4% from the assistant fusion (isolated within one container:
+3.93 -> 3.56 ms/step).
+**Standing vs vLLM MTP-3: Resin is 11% / 16% faster at ctx 256 / 512, but 9% slower at
+ctx128 and 4% slower at ctx1024; vs SGLang NEXTN Resin is 2-37% faster.** Speculative
+decoding has host-side work: the same configuration measured ~5% apart in different
+containers (e.g. 1.66 vs 1.755 ms at ctx256 for related builds), so the vLLM comparison
+(separate containers) is within noise at ctx128/1024 and should be called mixed.
+Remaining cost: the verify phase (M=4 rows: unfused cuBLAS projections and FlashInfer's
+q=4 attention + merge kernels) and the assistant's full-vocabulary masked head.

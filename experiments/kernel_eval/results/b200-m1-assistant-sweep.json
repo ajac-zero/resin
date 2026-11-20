@@ -1,0 +1,128 @@
+{
+  "status": "m1_kernel_sweep_only",
+  "gpu": "NVIDIA B200",
+  "triton": "3.9.0",
+  "results": [
+    {
+      "name": "asst_pre_proj",
+      "N": 256,
+      "K": 3072,
+      "cublas_us": 4.346999805420637,
+      "triton_us": 3.4890000242739916,
+      "best": [
+        1,
+        1024,
+        4
+      ],
+      "speedup": 1.2459156707300918,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_post_proj",
+      "N": 1536,
+      "K": 256,
+      "cublas_us": 1.8949999939650297,
+      "triton_us": 1.5064999461174011,
+      "best": [
+        8,
+        256,
+        4
+      ],
+      "speedup": 1.2578825501115238,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0000000214856513
+    },
+    {
+      "name": "asst_q_local",
+      "N": 1024,
+      "K": 256,
+      "cublas_us": 1.959000015631318,
+      "triton_us": 1.4745000516995788,
+      "best": [
+        8,
+        256,
+        4
+      ],
+      "speedup": 1.3285859253604513,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_q_global",
+      "N": 2048,
+      "K": 256,
+      "cublas_us": 1.999499974772334,
+      "triton_us": 1.5429999912157655,
+      "best": [
+        8,
+        256,
+        4
+      ],
+      "speedup": 1.2958522269315644,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_o_local",
+      "N": 256,
+      "K": 1024,
+      "cublas_us": 2.431500004604459,
+      "triton_us": 1.5709999715909362,
+      "best": [
+        2,
+        1024,
+        4
+      ],
+      "speedup": 1.547740323726488,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_o_global",
+      "N": 256,
+      "K": 2048,
+      "cublas_us": 4.076499957591295,
+      "triton_us": 2.0129999611526728,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 2.0250869529361704,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_down",
+      "N": 256,
+      "K": 2048,
+      "cublas_us": 4.080499988049269,
+      "triton_us": 2.0129999611526728,
+      "best": [
+        2,
+        1024,
+        4
+      ],
+      "speedup": 2.0270740520594526,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_mlp",
+      "N": 2048,
+      "K": 256,
+      "current_path_us": 6.295499857515097,
+      "fused_us": 2.251500030979514,
+      "best": [
+        4,
+        256,
+        4
+      ],
+      "speedup": 2.796135807635873,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0000016988752038
+    }
+  ],
+  "method": "L2-cold rotating weights, graph of 64 calls, configs swept per fixed shape, fp64 oracle ratios (candidate/baseline) over sampled weight copies, synthetic weights/inputs, one seed"
+}

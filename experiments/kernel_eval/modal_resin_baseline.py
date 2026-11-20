@@ -101,7 +101,19 @@ def trace_summary(directory):
         span=(iv[-1][1]-iv[0][0]) if iv else 0
         n=max(1,len(launches))
         top=sorted(by.items(),key=lambda kv:kv[1][0],reverse=True)[:30]
-        out[path.split('/')[-1]]={'graph_launches':len(launches),'kernel_events':len(kernels),
+        split=None
+        ordered=sorted(kernels,key=lambda e:e['ts']);launch_count=max(1,len(launches));per=len(ordered)//launch_count
+        if per:
+            chunk=ordered[:per];bound=next((i for i,e in enumerate(chunk) if 'o1536' in e['name']),None)
+            if bound:
+                def part(es):
+                    names=collections.defaultdict(lambda:[0.0,0])
+                    for e in es:names[e['name']][0]+=e['dur'];names[e['name']][1]+=1
+                    top=sorted(names.items(),key=lambda kv:kv[1][0],reverse=True)[:14]
+                    return {'kernels':len(es),'sum_us':sum(e['dur'] for e in es),'wall_us':(es[-1]['ts']+es[-1]['dur']-es[0]['ts']) if es else 0,
+                            'top':[{'name':k[:110],'us':v[0],'count':v[1]} for k,v in top]}
+                split={'first_target_kernel_index':bound,'draft_phase':part(chunk[:bound]),'verify_and_rest':part(chunk[bound:])}
+        out[path.split('/')[-1]]={'phase_split_first_launch':split,'graph_launches':len(launches),'kernel_events':len(kernels),
           'gpu_busy_us_total':busy,'gpu_span_us':span,'busy_over_span':busy/span if span else None,
           'sum_kernel_us_per_launch':sum(v[0] for v in by.values())/n,
           'kernel_count_per_launch':len(kernels)/n,
@@ -137,6 +149,9 @@ if _mode:
         _ek._PAGED_DECODE.clear()
     if _mode in ('upstream', 'fusedgelu', 'm1', 'paged'):
         kv_append = lambda *args: False
+    if _mode in ('upstream', 'fusedgelu', 'm1', 'paged', 'nodraft'):
+        from resin_models_cuda.gemma4 import edge_assistant as _ea
+        _ea.Gemma4EdgeAssistantForCausalLM.fused_attention_plans = False
     if _mode == 'upstream':
         _em._gelu_tanh_mul = lambda g, u: _F.gelu(g, approximate='tanh') * u
 if _os.environ.get('RESIN_DIAG_LOGITS'):
@@ -155,7 +170,7 @@ if _os.environ.get('RESIN_DIAG_LOGITS'):
 '''
 
 @app.function(image=image,gpu='B200',cpu=4,memory=16384,timeout=900,retries=0,max_containers=1,scaledown_window=2)
-def ab(modes: list, contexts: list, steps: int=48, log_logits: bool=False):
+def ab(modes: list, contexts: list, steps: int=48, log_logits: bool=False, draft_tokens: int=0, trace: bool=False, phases: bool=False):
     """Several configurations in ONE container, each run in a fresh engine, decode-only graphs."""
     import sys,os,time,json as _j
     sys.path.append('/opt/aux')
@@ -166,7 +181,7 @@ def ab(modes: list, contexts: list, steps: int=48, log_logits: bool=False):
     import resin_models_cuda.gemma4.edge_cuda as edge_cuda_module
     if torch.cuda.get_device_capability()!=(10,0):raise RuntimeError('B200 capability mismatch')
     spec=MODEL_SPECS['gemma4-e2b']
-    MODEL_SPECS['gemma4-e2b']=replace(spec,gpu='B200',context_length=2048,max_batch_size=1,prefill_chunk_size=1024,draft_tokens=0)
+    MODEL_SPECS['gemma4-e2b']=replace(spec,gpu='B200',context_length=2048,max_batch_size=1,prefill_chunk_size=1024,draft_tokens=draft_tokens)
     prepare_runtime(MODEL_SPECS['gemma4-e2b'])
     with open(edge_cuda_module.__file__,'a') as handle:handle.write(OVERLAY)
     results=[]
@@ -176,13 +191,14 @@ def ab(modes: list, contexts: list, steps: int=48, log_logits: bool=False):
         if log_logits:os.environ['RESIN_DIAG_LOGITS']=log
         started=time.time()
         cases=[{'phase':'decode','context_length':c,'batch_size':1} for c in contexts]
-        records=run_benchmark('gemma4-e2b','/opt/model',cases,draft_tokens=0,warmup_steps=4,measure_steps=steps,repeats=1,
-            prefill_chunk_size=1024,prefill_graph='disabled',gpu_memory_utilization=0.15,retain_outputs=True,numa='off',overlap=True,
+        records=run_benchmark('gemma4-e2b','/opt/model',cases,draft_tokens=draft_tokens,assistant_checkpoint='/opt/assistant' if draft_tokens else None,warmup_steps=4,measure_steps=steps,repeats=1,
+            prefill_chunk_size=1024,prefill_graph='disabled',gpu_memory_utilization=0.15,retain_outputs=True,numa='off',overlap=True,trace_dir=f'/tmp/trace-{index}' if trace else None,profile_graph_phases=phases,
             prompt_source='saved',prompt_corpus='/opt/prompts.zip')
         entry={'index':index,'mode':mode,'wall_seconds':time.time()-started,
                'records':[{'context':r['context_length'],'step_seconds':r['step_seconds'],'tokens':r['local_output_token_ids'][0],
-                           'graph_counts':r['graph_counts']} for r in records]}
+                           'graph_counts':r['graph_counts'],'window_seconds':r.get('window_seconds'),'committed_tokens':r.get('committed_tokens'),'accept_rate':r.get('measured_accept_rate'),'phases':{k:v for k,v in r.items() if 'phase' in k and k not in ('phase',)}} for r in records]}
         if log_logits:entry['logits']=open(log).read().splitlines()
+        if trace:entry['trace_summary']=trace_summary(f'/tmp/trace-{index}')
         results.append(entry)
     return {'status':'resin_ab_sequence','gpu':torch.cuda.get_device_name(),'torch':str(torch.__version__),'runs':results,
             'method':'fresh engine per run in one container; order as given; decode graphs only; prompts WildChat-derived artifact'}
@@ -244,11 +260,11 @@ def attn_study(contexts: list, layers: int=35, seed: int=7):
             'method':'35 distinct synthetic KV layers rotated per graph; one request; fp64 oracle on layer 0; FlashInfer decode wrapper (use_tensor_cores, fa2, cuda-graph buffers) as Resin builds it'}
 
 @app.local_entrypoint()
-def main(approve_spend:bool=False,draft_tokens:int=3,unit_only:bool=False,trace:bool=False,gpu_tests:str='',diag:str='',real:bool=False,ab_modes:str='',ab_contexts:str='256,1024',ab_steps:int=48,ab_logits:bool=False,attn:str=''):
+def main(approve_spend:bool=False,draft_tokens:int=3,unit_only:bool=False,trace:bool=False,gpu_tests:str='',diag:str='',real:bool=False,ab_modes:str='',ab_contexts:str='256,1024',ab_steps:int=48,ab_logits:bool=False,attn:str='',ab_draft:int=0,ab_trace:bool=False,ab_phases:bool=False):
     if attn:
         print(json.dumps(attn_study.remote([int(x) for x in attn.split(',')]),indent=2));return
     if ab_modes:
-        print(json.dumps(ab.remote(ab_modes.split(','),[int(x) for x in ab_contexts.split(',')],ab_steps,ab_logits),indent=2));return
+        print(json.dumps(ab.remote(ab_modes.split(','),[int(x) for x in ab_contexts.split(',')],ab_steps,ab_logits,ab_draft,ab_trace,ab_phases),indent=2));return
     if gpu_tests:
         print(json.dumps(gpu_unit.remote(select=gpu_tests if gpu_tests!='all' else ''),indent=2));return
     if unit_only:

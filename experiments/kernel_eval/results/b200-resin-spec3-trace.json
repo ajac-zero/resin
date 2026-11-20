@@ -1,0 +1,698 @@
+{
+  "status": "resin_ab_sequence",
+  "gpu": "NVIDIA B200",
+  "torch": "2.15.0+cu132",
+  "runs": [
+    {
+      "index": 0,
+      "mode": "full",
+      "wall_seconds": 89.38168740272522,
+      "records": [
+        {
+          "context": 256,
+          "step_seconds": [
+            0.0039100660000030985,
+            0.00393014499999822,
+            0.0039154060000043955,
+            0.003912275999994108,
+            0.003922565000010536,
+            0.00391164599999172,
+            0.003916635999999585,
+            0.003916685000007192,
+            0.003914385999991055,
+            0.0039024160000025176,
+            0.0039138260000015634,
+            0.003914455000000316,
+            0.003913846000003218,
+            0.00392141599999718,
+            0.0039046060000060834,
+            0.003908735999999635,
+            0.003913054999998167,
+            0.003915335999991498,
+            0.003918126000002076,
+            0.003928935000004685,
+            0.003939254999991704,
+            0.003928516000001991,
+            0.0039238949999997885,
+            0.003931685000011953,
+            0.0038958159999964437,
+            0.004428614999994807,
+            0.004388915999996357,
+            0.004392755000012016,
+            0.004689588999994498,
+            0.0046333899999950745,
+            0.0039191660000028605,
+            0.003916865999997299,
+            0.003913425000007464,
+            0.0039223659999976235,
+            0.003927825000005214,
+            0.003928795999996737,
+            0.003917164999990064,
+            0.003911126000005538,
+            0.00391491599999938,
+            0.003918104999996785,
+            0.003917856000001052,
+            0.003931905000001734,
+            0.003927306000008457,
+            0.003930364999988001,
+            0.003923276000008968,
+            0.0039166050000005725,
+            0.003923536000002059,
+            0.003929854999995541
+          ],
+          "tokens": [
+            2730,
+            18275,
+            929,
+            56667,
+            569,
+            158604,
+            236764,
+            2185,
+            770,
+            76371,
+            2982,
+            78608,
+            1608,
+            236743,
+            236770,
+            236771,
+            236771,
+            236908,
+            759,
+            38433,
+            191003,
+            513,
+            236789,
+            602,
+            3393,
+            236764,
+            36067,
+            49760,
+            236789,
+            543,
+            503,
+            236789,
+            41791,
+            513,
+            236789,
+            54074,
+            569,
+            103425,
+            2947,
+            503,
+            236789,
+            716,
+            87024,
+            533,
+            2880,
+            723,
+            88915,
+            124777,
+            236761,
+            5213,
+            236798,
+            236789,
+            128055,
+            569,
+            759,
+            38433,
+            513,
+            236789,
+            602,
+            3393,
+            71574,
+            569,
+            45702,
+            113413,
+            236764,
+            570,
+            57430,
+            537,
+            236789,
+            118385,
+            569,
+            537,
+            236789,
+            60659,
+            236764,
+            759,
+            3996,
+            5009,
+            569,
+            537,
+            236789,
+            19079,
+            16265,
+            567,
+            236764,
+            1008,
+            537,
+            236789,
+            88192,
+            2880,
+            54315,
+            1998,
+            503,
+            236789,
+            716,
+            16435,
+            1328,
+            99382,
+            108,
+            236780,
+            35238,
+            236764,
+            2185,
+            76371,
+            87706,
+            674,
+            3393,
+            929,
+            4742,
+            29028,
+            159707,
+            2637,
+            4742,
+            39032,
+            3037,
+            5213,
+            128055,
+            569,
+            2534,
+            690,
+            236789,
+            543,
+            10426
+          ],
+          "graph_counts": {
+            "decode.replay_count": 48,
+            "decode.eager_fallback_count": 0,
+            "prefill.replay_count": 0,
+            "prefill.eager_fallback_count": 0
+          },
+          "window_seconds": 0.19104745600000683,
+          "committed_tokens": 105,
+          "accept_rate": 0.3958333333333333
+        },
+        {
+          "context": 1024,
+          "step_seconds": [
+            0.003942745000003356,
+            0.00394943499999556,
+            0.003952584999993292,
+            0.003934235000002673,
+            0.003957984999999553,
+            0.003941824999998289,
+            0.003960965000004535,
+            0.003944825000004926,
+            0.0039465549999988525,
+            0.003940494999994826,
+            0.003941045000004806,
+            0.003948964999992199,
+            0.003948525000012637,
+            0.003939354999999978,
+            0.003940035999988822,
+            0.003956194000011237,
+            0.00394380599999522,
+            0.003936334999991686,
+            0.003950815000010266,
+            0.003952294999990613,
+            0.003944764999999961,
+            0.003960654000010777,
+            0.003944255999996926,
+            0.003959113999997044,
+            0.003952435000002197,
+            0.003940674999995508,
+            0.004547162000008598,
+            0.004494723999997063,
+            0.004506622999997489,
+            0.0048936639999936915,
+            0.004528083000010952,
+            0.0045128630000021985,
+            0.0046518499999876894,
+            0.003949465000005148,
+            0.003957233999997811,
+            0.0039504150000055915,
+            0.003937504999996122,
+            0.003954905000000508,
+            0.003945575000003032,
+            0.003948274999999057,
+            0.0039539550000000645,
+            0.003955834999999297,
+            0.003939415000004942,
+            0.003945944999998119,
+            0.003954324999995151,
+            0.00395236500000351,
+            0.003951064999995424,
+            0.0039581550000065135
+          ],
+          "tokens": [
+            2730,
+            18275,
+            690,
+            236789,
+            78306,
+            169841,
+            236764,
+            2185,
+            770,
+            76371,
+            2982,
+            78608,
+            1608,
+            236743,
+            236770,
+            236771,
+            236771,
+            236908,
+            759,
+            38433,
+            191003,
+            513,
+            236789,
+            602,
+            3393,
+            236764,
+            1295,
+            27006,
+            71574,
+            21624,
+            1747,
+            116670,
+            513,
+            236789,
+            154498,
+            236764,
+            569,
+            759,
+            33863,
+            11052,
+            1998,
+            1009,
+            61648,
+            236764,
+            1008,
+            853,
+            195280,
+            4295,
+            190232,
+            66637,
+            8604,
+            2880,
+            1640,
+            28408,
+            1235,
+            186285,
+            3349,
+            1640,
+            9299,
+            4108,
+            197914,
+            1998,
+            939,
+            41791,
+            236761,
+            108,
+            236780,
+            35238,
+            236764,
+            2185,
+            76371,
+            87706,
+            674,
+            3393,
+            569,
+            9149,
+            5213,
+            2887,
+            8837,
+            1018,
+            568,
+            28539,
+            1009,
+            71936,
+            696,
+            20737,
+            236768,
+            1008,
+            4742,
+            39032,
+            3037,
+            211986,
+            569,
+            7529,
+            91511,
+            1008,
+            569,
+            7529,
+            95479,
+            30199,
+            28953,
+            236761,
+            108,
+            10354,
+            105839,
+            1747,
+            8739,
+            108
+          ],
+          "graph_counts": {
+            "decode.replay_count": 48,
+            "decode.eager_fallback_count": 0,
+            "prefill.replay_count": 0,
+            "prefill.eager_fallback_count": 0
+          },
+          "window_seconds": 0.1940203230000037,
+          "committed_tokens": 87,
+          "accept_rate": 0.2708333333333333
+        }
+      ],
+      "trace_summary": {
+        "decode-ctx1024-b1-rank000.json.gz": {
+          "graph_launches": 3,
+          "kernel_events": 3705,
+          "gpu_busy_us_total": 11964.240234375,
+          "gpu_span_us": 12639.419921875,
+          "busy_over_span": 0.9465814339840495,
+          "sum_kernel_us_per_launch": 4195.119333333333,
+          "kernel_count_per_launch": 1235.0,
+          "top_kernels": [
+            {
+              "name": "nvjet_sm100_tst_128x8_64x12_4x1_v_bz_TNT",
+              "us_per_launch": 356.7099999999998,
+              "count_per_launch": 40.0
+            },
+            {
+              "name": "nvjet_sm100_tst_16x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 343.3663333333331,
+              "count_per_launch": 77.0
+            },
+            {
+              "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+              "us_per_launch": 306.9066666666667,
+              "count_per_launch": 42.0
+            },
+            {
+              "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 64u, 1u, 4u, 16u, 16u, 4u, 1u, (",
+              "us_per_launch": 280.84966666666674,
+              "count_per_launch": 28.0
+            },
+            {
+              "name": "_norm_residual",
+              "us_per_launch": 277.6923333333334,
+              "count_per_launch": 105.0
+            },
+            {
+              "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::",
+              "us_per_launch": 202.8566666666667,
+              "count_per_launch": 76.0
+            },
+            {
+              "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_TNT",
+              "us_per_launch": 198.12833333333336,
+              "count_per_launch": 36.0
+            },
+            {
+              "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true",
+              "us_per_launch": 160.89233333333334,
+              "count_per_launch": 60.0
+            },
+            {
+              "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o1536i64div81_tensorptrbf16_gmem_align16_o_4153601_None_None_te",
+              "us_per_launch": 149.65100000000004,
+              "count_per_launch": 71.0
+            },
+            {
+              "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 8u, 32u, 4u, 1u, flashinfer::DefaultAttention<fal",
+              "us_per_launch": 126.56866666666667,
+              "count_per_launch": 9.0
+            },
+            {
+              "name": "nvjet_sm100_tst_256x8_64x6_2x1_v_bz_TNT",
+              "us_per_launch": 123.15533333333333,
+              "count_per_launch": 1.0
+            },
+            {
+              "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x6",
+              "us_per_launch": 119.23000000000002,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8::Pa",
+              "us_per_launch": 113.08700000000009,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 16u, 1u, 1u, 32u, 32u, 1u, 4u, (",
+              "us_per_launch": 101.39499999999998,
+              "count_per_launch": 7.0
+            },
+            {
+              "name": "void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, float*, int*,",
+              "us_per_launch": 97.94100000000002,
+              "count_per_launch": 37.0
+            },
+            {
+              "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o256i64div81_tensorptrbf16_gmem_align16_o_425601_None_None_tens",
+              "us_per_launch": 85.30799999999995,
+              "count_per_launch": 61.0
+            },
+            {
+              "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, __nv_bfloat16, __nv_bfloat16, __nv_bfloat",
+              "us_per_launch": 76.27566666666668,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 16u, 32u, 4u, 1u, flashinfer::DefaultAttention<fa",
+              "us_per_launch": 70.07833333333333,
+              "count_per_launch": 3.0
+            },
+            {
+              "name": "_strided_qk_rmsnorm_rope",
+              "us_per_launch": 68.27600000000002,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "nvjet_sm100_tst_32x64_64x16_4x1_v_bz_splitK_TNN",
+              "us_per_launch": 65.8976666666667,
+              "count_per_launch": 18.0
+            },
+            {
+              "name": "nvjet_sm100_tst_24x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 65.02266666666667,
+              "count_per_launch": 12.0
+            },
+            {
+              "name": "void at::native::vectorized_elementwise_kernel<8, at::native::GeluCUDAKernelImpl(at::TensorIteratorBase&, at::native::GeluType)::{lambda()#1",
+              "us_per_launch": 64.65066666666664,
+              "count_per_launch": 47.0
+            },
+            {
+              "name": "_gelu_tanh_mul",
+              "us_per_launch": 61.46899999999997,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "nvjet_sm100_tst_8x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 52.26533333333336,
+              "count_per_launch": 18.0
+            },
+            {
+              "name": "void at::native::vectorized_elementwise_kernel<8, at::native::CUDAFunctor_add<c10::BFloat16>, std::array<char*, 3ul>, false>(int, at::native",
+              "us_per_launch": 47.80733333333334,
+              "count_per_launch": 37.0
+            },
+            {
+              "name": "void at::native::sbtopk::gatherTopK<c10::BFloat16, unsigned int, 1, false>(at::cuda::detail::TensorInfo<c10::BFloat16 const, unsigned int>, ",
+              "us_per_launch": 35.76433333333333,
+              "count_per_launch": 3.0
+            },
+            {
+              "name": "void flashinfer::PersistentVariableLengthMergeStatesKernel<16u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, float*, int*",
+              "us_per_launch": 35.01766666666668,
+              "count_per_launch": 10.0
+            },
+            {
+              "name": "Memcpy HtoD (Pinned -> Device)",
+              "us_per_launch": 30.12333333333333,
+              "count_per_launch": 23.0
+            },
+            {
+              "name": "void at::native::(anonymous namespace)::CatArrayBatchedCopy<at::native::(anonymous namespace)::OpaqueType<2u>, unsigned int, 3, 64, 64>(at::",
+              "us_per_launch": 27.296000000000006,
+              "count_per_launch": 12.0
+            },
+            {
+              "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<c10::BFloat16, at::native::ArgMaxOps<float>, unsigned int, long, 4, 4> >(at::nat",
+              "us_per_launch": 26.453333333333337,
+              "count_per_launch": 3.0
+            }
+          ]
+        },
+        "decode-ctx256-b1-rank000.json.gz": {
+          "graph_launches": 3,
+          "kernel_events": 3705,
+          "gpu_busy_us_total": 11924.494140625,
+          "gpu_span_us": 13107.85205078125,
+          "busy_over_span": 0.9097214474521231,
+          "sum_kernel_us_per_launch": 4187.219666666667,
+          "kernel_count_per_launch": 1235.0,
+          "top_kernels": [
+            {
+              "name": "nvjet_sm100_tst_128x8_64x12_4x1_v_bz_TNT",
+              "us_per_launch": 355.386,
+              "count_per_launch": 40.0
+            },
+            {
+              "name": "nvjet_sm100_tst_16x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 344.0803333333333,
+              "count_per_launch": 77.0
+            },
+            {
+              "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+              "us_per_launch": 307.1279999999999,
+              "count_per_launch": 42.0
+            },
+            {
+              "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 64u, 1u, 4u, 16u, 16u, 4u, 1u, (",
+              "us_per_launch": 280.6656666666668,
+              "count_per_launch": 28.0
+            },
+            {
+              "name": "_norm_residual",
+              "us_per_launch": 277.3443333333333,
+              "count_per_launch": 105.0
+            },
+            {
+              "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::",
+              "us_per_launch": 203.71566666666683,
+              "count_per_launch": 76.0
+            },
+            {
+              "name": "nvjet_sm100_tst_64x8_64x16_4x1_v_bz_TNT",
+              "us_per_launch": 197.61366666666663,
+              "count_per_launch": 36.0
+            },
+            {
+              "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true",
+              "us_per_launch": 161.35533333333336,
+              "count_per_launch": 60.0
+            },
+            {
+              "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o1536i64div81_tensorptrbf16_gmem_align16_o_4153601_None_None_te",
+              "us_per_launch": 150.45466666666672,
+              "count_per_launch": 71.0
+            },
+            {
+              "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 8u, 32u, 4u, 1u, flashinfer::DefaultAttention<fal",
+              "us_per_launch": 125.95333333333333,
+              "count_per_launch": 9.0
+            },
+            {
+              "name": "nvjet_sm100_tst_256x8_64x6_2x1_v_bz_TNT",
+              "us_per_launch": 122.98866666666667,
+              "count_per_launch": 1.0
+            },
+            {
+              "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x6",
+              "us_per_launch": 119.16866666666674,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_s16816gemm_bf16_64x64_64x6_tn_align8::Pa",
+              "us_per_launch": 113.14366666666676,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::MaskMode)1, 16u, 1u, 1u, 32u, 32u, 1u, 4u, (",
+              "us_per_launch": 98.721,
+              "count_per_launch": 7.0
+            },
+            {
+              "name": "void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, float*, int*,",
+              "us_per_launch": 98.11500000000002,
+              "count_per_launch": 37.0
+            },
+            {
+              "name": "kernel_cutlass_kernel_quackrmsnormRMSNorm_object_at__tensorptrbf16gmemalign16o256i64div81_tensorptrbf16_gmem_align16_o_425601_None_None_tens",
+              "us_per_launch": 85.62366666666664,
+              "count_per_launch": 61.0
+            },
+            {
+              "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, __nv_bfloat16, __nv_bfloat16, __nv_bfloat",
+              "us_per_launch": 76.32000000000006,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "void flashinfer::BatchDecodeWithPagedKVCacheKernel<(flashinfer::PosEncodingMode)0, 2u, 1u, 16u, 32u, 4u, 1u, flashinfer::DefaultAttention<fa",
+              "us_per_launch": 69.63300000000001,
+              "count_per_launch": 3.0
+            },
+            {
+              "name": "_strided_qk_rmsnorm_rope",
+              "us_per_launch": 68.21366666666665,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "nvjet_sm100_tst_32x64_64x16_4x1_v_bz_splitK_TNN",
+              "us_per_launch": 66.11433333333332,
+              "count_per_launch": 18.0
+            },
+            {
+              "name": "nvjet_sm100_tst_24x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 65.24966666666667,
+              "count_per_launch": 12.0
+            },
+            {
+              "name": "void at::native::vectorized_elementwise_kernel<8, at::native::GeluCUDAKernelImpl(at::TensorIteratorBase&, at::native::GeluType)::{lambda()#1",
+              "us_per_launch": 64.70566666666663,
+              "count_per_launch": 47.0
+            },
+            {
+              "name": "_gelu_tanh_mul",
+              "us_per_launch": 61.514999999999965,
+              "count_per_launch": 35.0
+            },
+            {
+              "name": "nvjet_sm100_tst_8x64_64x16_4x1_v_bz_TNN",
+              "us_per_launch": 52.34133333333335,
+              "count_per_launch": 18.0
+            },
+            {
+              "name": "void at::native::vectorized_elementwise_kernel<8, at::native::CUDAFunctor_add<c10::BFloat16>, std::array<char*, 3ul>, false>(int, at::native",
+              "us_per_launch": 47.327999999999996,
+              "count_per_launch": 37.0
+            },
+            {
+              "name": "void at::native::sbtopk::gatherTopK<c10::BFloat16, unsigned int, 1, false>(at::cuda::detail::TensorInfo<c10::BFloat16 const, unsigned int>, ",
+              "us_per_launch": 38.464,
+              "count_per_launch": 3.0
+            },
+            {
+              "name": "void flashinfer::PersistentVariableLengthMergeStatesKernel<16u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, float*, int*",
+              "us_per_launch": 29.85633333333334,
+              "count_per_launch": 10.0
+            },
+            {
+              "name": "Memcpy HtoD (Pinned -> Device)",
+              "us_per_launch": 28.28899999999999,
+              "count_per_launch": 23.0
+            },
+            {
+              "name": "void at::native::(anonymous namespace)::CatArrayBatchedCopy<at::native::(anonymous namespace)::OpaqueType<2u>, unsigned int, 3, 64, 64>(at::",
+              "us_per_launch": 27.30666666666667,
+              "count_per_launch": 12.0
+            },
+            {
+              "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<c10::BFloat16, at::native::ArgMaxOps<float>, unsigned int, long, 4, 4> >(at::nat",
+              "us_per_launch": 26.50666666666667,
+              "count_per_launch": 3.0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "method": "fresh engine per run in one container; order as given; decode graphs only; prompts WildChat-derived artifact"
+}

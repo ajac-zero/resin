@@ -818,3 +818,77 @@ def test_kv_append_declines_unsupported_contracts_without_writing():
     assert not kv_append(keys, values, key, key, pages.float(), offsets)
     assert not kv_append(keys, values, key[:1], key, pages, offsets)
     assert torch.count_nonzero(keys) == 0 and torch.count_nonzero(values) == 0
+
+
+@torch.inference_mode()
+def test_fused_assistant_step_matches_reference_step_with_flashinfer_decode():
+    from flashinfer import BatchDecodeWithPagedKVCacheWrapper
+
+    from resin.models.gemma4.config import FULL_ATTENTION, SLIDING_ATTENTION
+    from resin_models_cuda.gemma4.edge_assistant import (
+        Gemma4EdgeAssistantConfig,
+        Gemma4EdgeAssistantForCausalLM,
+    )
+
+    config = Gemma4EdgeAssistantConfig(
+        backbone_hidden_size=1536, vocab_size=4096, hidden_size=256, intermediate_size=2048,
+        num_hidden_layers=4, num_attention_heads=4, num_key_value_heads=1,
+        num_global_key_value_heads=1, head_dim=256, global_head_dim=512, sliding_window=512,
+        max_position_embeddings=4096, rms_norm_eps=1e-6,
+        layer_types=(SLIDING_ATTENTION,) * 3 + (FULL_ATTENTION,),
+        local_rope_theta=10000.0, global_rope_theta=1000000.0, global_partial_rotary_factor=0.25,
+        num_centroids=64, centroid_intermediate_top_k=8,
+    )
+    torch.manual_seed(11)
+    model = Gemma4EdgeAssistantForCausalLM(config).to("cuda")
+    for parameter in model.parameters():
+        parameter.data.normal_(0, 0.04)
+    for layer in model.model.layers:
+        for norm in (layer.input_layernorm, layer.post_attention_layernorm,
+                     layer.pre_feedforward_layernorm, layer.post_feedforward_layernorm,
+                     layer.self_attn.q_norm):
+            norm.weight.data.fill_(1.0)
+        layer.layer_scalar.fill_(0.7)
+    model.model.norm.weight.data.fill_(1.0)
+    model.masked_embedding.token_ordering.copy_(torch.randperm(4096))
+    model.materialize_buffers(torch.device("cuda"))
+    model.eval()
+    page, length = 64, 300
+    pages = 8
+    local_k = torch.randn(pages, page, 1, 256, dtype=torch.bfloat16, device="cuda")
+    local_v = torch.randn_like(local_k)
+    global_k = torch.randn(pages, page, 1, 512, dtype=torch.bfloat16, device="cuda")
+    global_v = torch.randn_like(global_k)
+    count = (length + page - 1) // page
+    indptr = torch.tensor([0, count], dtype=torch.int32, device="cuda")
+    indices = torch.arange(count, dtype=torch.int32, device="cuda")
+    last = torch.tensor([length - (count - 1) * page], dtype=torch.int32, device="cuda")
+
+    class Plan:
+        kv_indptr, page_indices, last_page_lengths = indptr, indices, last
+
+    def wrapper(window, width):
+        workspace = torch.empty(64 * 1024 * 1024, dtype=torch.uint8, device="cuda")
+        decode = BatchDecodeWithPagedKVCacheWrapper(workspace, "NHD", backend="fa2", use_tensor_cores=False)
+        decode.plan(indptr, indices, last, 4, 1, width, page, window_left=window,
+                    q_data_type=torch.bfloat16, kv_data_type=torch.bfloat16, o_data_type=torch.bfloat16,
+                    sm_scale=1.0, pos_encoding_mode="NONE")
+        return decode
+
+    local_wrapper, global_wrapper = wrapper(511, 256), wrapper(-1, 512)
+    embeds = torch.randn(1, 2 * 1536, dtype=torch.bfloat16, device="cuda")
+    positions = torch.tensor([length], dtype=torch.int64, device="cuda")
+    common = dict(local_wrapper=local_wrapper, global_wrapper=global_wrapper,
+                  local_kv=(local_k, local_v), global_kv=(global_k, global_v))
+    expected_logits, expected_hidden = Gemma4EdgeAssistantForCausalLM.__mro__[1].forward_step(
+        model, embeds, positions, **common)
+    actual_logits, actual_hidden = model.forward_step(
+        embeds, positions, **common, local_plan=Plan, global_plan=Plan, window_left=511, page_size=page)
+    scale = expected_hidden.float().abs().max()
+    assert torch.isfinite(actual_hidden).all() and torch.isfinite(actual_logits).all()
+    assert (actual_hidden.float() - expected_hidden.float()).abs().max() <= 0.06 * scale + 0.02
+    top = expected_logits.float().topk(3).indices
+    assert actual_logits.float().argmax() in top[0]
+    # Without plans the original code path runs unchanged.
+    fallback_logits, fallback_hidden = model.forward_step(embeds, positions, **common)
+    torch.testing.assert_close(fallback_hidden, expected_hidden, atol=0, rtol=0)
