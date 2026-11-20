@@ -332,3 +332,50 @@ Primary sources checked for this step:
 - model code: https://github.com/huggingface/transformers/blob/v5.14.1/src/transformers/models/gemma4/modeling_gemma4.py
 - cache API: https://github.com/huggingface/transformers/blob/v5.14.1/src/transformers/cache_utils.py
 - Resin files above and `deploy/models.py`, at source revision pinned in task.json.
+
+## Resin Gemma E2B on B200: first experimental engine baseline
+
+`modal_resin_baseline.py` builds a minimal model-specific image (torch 2.15.0+cu132,
+the version Resin's CUDA package pins; flashinfer 0.7.1; quack/cutlass-dsl pins),
+installs Resin's Rust extension plus model packages from the pinned fork source,
+downloads the pinned Gemma target and `google/gemma-4-E2B-it-assistant` (rev
+2d874ef7...), and runs Resin's OWN `run_benchmark` harness on one B200
+(capability 10.0). Result: `results/b200-resin-baseline.json`, run
+https://modal.com/apps/ajac-zero/main/ap-TEsEkJtrGIjbuTgXGQjKde .
+
+Experimental overrides (NOT a released B200 preset): gpu=B200 instead of the
+preset's A100, max batch 1, context 2048, prefill chunk 1024, memory fraction 0.15,
+synthetic deterministic prompt source, numa off. Preset arch flags were replaced
+with 10.0a. Full Resin CUDA-graph catalog capture took 124 s (cold, untimed).
+
+Measured (single run, single repeat, batch 1, 256-token context):
+- Decode, draft tokens 3 with assistant: median 4.117 ms per verify step over 16
+  steps; 56 tokens committed in 0.0674 s (~831 tokens/s); 15 graph replays, ZERO
+  eager fallbacks; measured acceptance 0.833 on synthetic deterministic prompts.
+  **Acceptance is workload dependent; this is not a chat/summarization quality or
+  speedup number.**
+- Prefill 256 tokens: median 17.3 ms over 3 cohorts with the assistant loaded
+  (a draft-free diagnostic run measured ~7.7-8.8 ms; that run is not retained as
+  a result because its decode failed, see below). Only 3 samples.
+
+Context for the earlier HF static-cache graph reference (7.9 ms/token): that is a
+token-at-a-time greedy reference; Resin commits ~3.5 tokens per 4.1 ms step here
+(~1.2 ms per committed token). These are DIFFERENT workloads/algorithms (speculative
+decode vs not), different batch semantics and token sources, so the ratio is not a
+like-for-like speedup. A like-for-like comparison needs Resin with draft_tokens=0,
+which currently does not run (next).
+
+**Probable upstream defect found (unconfirmed beyond this repro):** with
+`draft_tokens=0`, Resin's Gemma E2B decode fails in `edge_cuda.py::_finish_enqueue`
+with `IndexError: too many indices for tensor of dimension 1`
+(`DeviceAcceptance.from_samples(output[:, :0], output, ...)` where the non-speculative
+sampler output is 1-D). Upstream Gemma E2B/E4B tests only exercise
+`speculative_draft_tokens=3`. This is a lead worth a minimal repro/fix, not yet a
+fixed or reported issue. Prefill at draft 0 did run successfully on B200 first.
+
+Process notes: three setup failures preceded success and were all CPU/image or
+Python-path problems, not GPU measurements: (1) a build killed by my tool abort,
+stopped explicitly; (2) the source tree shadowed the installed package because
+`scripts/bench.py` prepends its repo root, so the image now keeps only `deploy/`
+and `scripts/` in `/opt/aux` and deletes the source tree; (3) the draft-free decode
+failure above. No persistent volumes or servers; all apps stopped, zero tasks.

@@ -1,0 +1,341 @@
+{
+  "status": "experimental_resin_b200_baseline",
+  "torch": "2.15.0+cu132",
+  "gpu": "NVIDIA B200",
+  "records": [
+    {
+      "schema_version": 1,
+      "phase": "prefill",
+      "context_length": 256,
+      "shared_prefix_tokens": 0,
+      "private_prompt_tokens": 256,
+      "cached_tokens_min": 0,
+      "cached_tokens_max": 0,
+      "batch_size": 1,
+      "global_batch_size": 1,
+      "measured_global_batch_size_min": 1,
+      "measured_global_batch_size_max": 1,
+      "gpu_count": 1,
+      "attn_dp": 1,
+      "prefill_tokens": 256.0,
+      "input_tokens": 768,
+      "draft_tokens": 3,
+      "measured_accept_rate": null,
+      "balanced_experts": false,
+      "balanced_experts_scope": null,
+      "warmup_steps": 1,
+      "measure_steps": 3,
+      "step_seconds": [
+        0.017760799999990695,
+        0.01730368500000168,
+        0.01726794600000403
+      ],
+      "prefill_seconds": [
+        0.017760799999990695,
+        0.01730368500000168,
+        0.01726794600000403
+      ],
+      "prefill_warmup_cohorts": 1,
+      "prefill_measure_cohorts": 3,
+      "window_seconds": 0.052332430999996404,
+      "committed_tokens": 3,
+      "measured_context_start_min": 0,
+      "measured_context_start_max": 0,
+      "measured_context_end_min": 256,
+      "measured_context_end_max": 256,
+      "graph_counts": {
+        "decode.replay_count": 0,
+        "decode.eager_fallback_count": 0,
+        "prefill.replay_count": 105,
+        "prefill.eager_fallback_count": 0
+      },
+      "runner_counts": {
+        "attention_plan_cache.hits": 0,
+        "attention_plan_cache.misses": 0,
+        "attention_metadata.device_rebuilds": 0,
+        "device_completion.enqueues": 0,
+        "device_hidden.allocations": 0,
+        "device_feedback.continuations": 0
+      },
+      "overlap_counts": {
+        "enqueues": 0,
+        "continuations": 0
+      },
+      "metadata": {
+        "model": "gemma4-e2b",
+        "implementation": "resin",
+        "implementation_version": "0.1.0",
+        "checkpoint": "/opt/model",
+        "hardware": "NVIDIA B200",
+        "parallelism": {
+          "world_size": 1,
+          "attn_dp": 1,
+          "attn_tp": 1,
+          "cp": 1,
+          "ep": 1
+        },
+        "graphs": {
+          "prefill": "breakable",
+          "decode": "full"
+        },
+        "quant": "checkpoint",
+        "expert_backend": "flashinfer",
+        "load_seconds": 9.703309669,
+        "capture_seconds": 124.05711117799999,
+        "profile_graph_phases": false,
+        "overlap": true,
+        "timing": "continuous_completions",
+        "prefill_chunk_size": 1024,
+        "context_capacity": 352,
+        "max_batch_tokens": 1024,
+        "capacity_skipped_cases": [],
+        "cache_capacity_probes": [],
+        "configured_batch_capacity": 1,
+        "requested_decode_batch_catalog": [
+          1
+        ],
+        "cache_capacity": {
+          "total_memory_bytes": 191490555904,
+          "free_memory_bytes": 181124595712,
+          "memory_utilization": 0.15,
+          "protected_free_bytes": 162766972519,
+          "overhead_bytes": 369098752,
+          "cache_budget_bytes": 17988524441,
+          "bytes_per_parent": 786432,
+          "reserved_parent_count": 1,
+          "parent_capacity": 22872,
+          "allocation_bytes": 17988059136
+        },
+        "max_prefill_tokens": 131072,
+        "budget_skipped_cases": [],
+        "prompt_workload": {
+          "prompt_source_id": "deterministic-token-ids-v1"
+        },
+        "sampling": {
+          "temperature": 0.0,
+          "top_p": 1.0,
+          "top_k": null,
+          "seed": 41
+        },
+        "sampling_filter_order": "top-p-then-top-k",
+        "assistant_repo_id": "google/gemma-4-E2B-it-assistant",
+        "assistant_revision": "2d874ef7d29f9a30599a1e4b3c1cbc9595f005df",
+        "repeat": 1
+      },
+      "local_output_token_ids": [
+        [
+          8509
+        ]
+      ],
+      "numa": {
+        "mode": "off",
+        "bindings": [
+          null
+        ]
+      }
+    },
+    {
+      "schema_version": 1,
+      "phase": "decode",
+      "context_length": 256,
+      "shared_prefix_tokens": 0,
+      "private_prompt_tokens": 256,
+      "cached_tokens_min": 0,
+      "cached_tokens_max": 0,
+      "batch_size": 1,
+      "global_batch_size": 1,
+      "measured_global_batch_size_min": 1,
+      "measured_global_batch_size_max": 1,
+      "gpu_count": 1,
+      "attn_dp": 1,
+      "prefill_tokens": 0.0,
+      "input_tokens": 0,
+      "draft_tokens": 3,
+      "measured_accept_rate": 0.8333333333333334,
+      "balanced_experts": false,
+      "balanced_experts_scope": null,
+      "warmup_steps": 4,
+      "measure_steps": 16,
+      "step_seconds": [
+        0.004103928000006363,
+        0.0041146679999997104,
+        0.004118215999994845,
+        0.004113358000012113,
+        0.0041070240000067315,
+        0.004115394999985256,
+        0.004121031000011044,
+        0.004121280999981991,
+        0.004122275000014497,
+        0.004102658999983078,
+        0.004133600000017168,
+        0.004118387000005441,
+        0.004114412999996375,
+        0.004135125000004791,
+        0.004096007999976337,
+        0.005626391000021158
+      ],
+      "window_seconds": 0.0673637590000169,
+      "committed_tokens": 56,
+      "measured_context_start_min": 265,
+      "measured_context_start_max": 265,
+      "measured_context_end_min": 321,
+      "measured_context_end_max": 321,
+      "graph_counts": {
+        "decode.replay_count": 15,
+        "decode.eager_fallback_count": 0,
+        "prefill.replay_count": 0,
+        "prefill.eager_fallback_count": 0
+      },
+      "runner_counts": {
+        "attention_plan_cache.hits": 58,
+        "attention_plan_cache.misses": 2,
+        "attention_metadata.device_rebuilds": 0,
+        "device_completion.enqueues": 15,
+        "device_hidden.allocations": 0,
+        "device_feedback.continuations": 14
+      },
+      "overlap_counts": {
+        "enqueues": 15,
+        "continuations": 14
+      },
+      "metadata": {
+        "model": "gemma4-e2b",
+        "implementation": "resin",
+        "implementation_version": "0.1.0",
+        "checkpoint": "/opt/model",
+        "hardware": "NVIDIA B200",
+        "parallelism": {
+          "world_size": 1,
+          "attn_dp": 1,
+          "attn_tp": 1,
+          "cp": 1,
+          "ep": 1
+        },
+        "graphs": {
+          "prefill": "breakable",
+          "decode": "full"
+        },
+        "quant": "checkpoint",
+        "expert_backend": "flashinfer",
+        "load_seconds": 9.703309669,
+        "capture_seconds": 124.05711117799999,
+        "profile_graph_phases": false,
+        "overlap": true,
+        "timing": "continuous_completions",
+        "prefill_chunk_size": 1024,
+        "context_capacity": 352,
+        "max_batch_tokens": 1024,
+        "capacity_skipped_cases": [],
+        "cache_capacity_probes": [],
+        "configured_batch_capacity": 1,
+        "requested_decode_batch_catalog": [
+          1
+        ],
+        "cache_capacity": {
+          "total_memory_bytes": 191490555904,
+          "free_memory_bytes": 181124595712,
+          "memory_utilization": 0.15,
+          "protected_free_bytes": 162766972519,
+          "overhead_bytes": 369098752,
+          "cache_budget_bytes": 17988524441,
+          "bytes_per_parent": 786432,
+          "reserved_parent_count": 1,
+          "parent_capacity": 22872,
+          "allocation_bytes": 17988059136
+        },
+        "max_prefill_tokens": 131072,
+        "budget_skipped_cases": [],
+        "prompt_workload": {
+          "prompt_source_id": "deterministic-token-ids-v1"
+        },
+        "sampling": {
+          "temperature": 0.0,
+          "top_p": 1.0,
+          "top_k": null,
+          "seed": 41
+        },
+        "sampling_filter_order": "top-p-then-top-k",
+        "assistant_repo_id": "google/gemma-4-E2B-it-assistant",
+        "assistant_revision": "2d874ef7d29f9a30599a1e4b3c1cbc9595f005df",
+        "repeat": 1
+      },
+      "local_output_token_ids": [
+        [
+          8509,
+          17964,
+          7765,
+          4928,
+          28628,
+          27689,
+          27333,
+          18945,
+          21065,
+          18407,
+          9338,
+          24759,
+          27505,
+          236761,
+          101,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106,
+          106
+        ]
+      ],
+      "numa": {
+        "mode": "off",
+        "bindings": [
+          null
+        ]
+      }
+    }
+  ],
+  "limitations": "Minimal model-specific dependency image; experimental B200 overrides, not released preset; synthetic batch1 workload; serving baseline not yet independently qualified."
+}
