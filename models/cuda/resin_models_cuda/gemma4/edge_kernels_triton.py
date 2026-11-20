@@ -511,31 +511,41 @@ def _paged_decode_partial(
     value_page_stride,
     value_slot_stride,
     GROUP: tl.constexpr,
+    QLEN: tl.constexpr,
     HEAD_PAD: tl.constexpr,
     D: tl.constexpr,
     PAGE: tl.constexpr,
     BLOCK_N: tl.constexpr,
     SPLITS: tl.constexpr,
 ):
-    """One KV chunk of single-query attention for all query heads sharing one KV head."""
+    """One KV chunk of causal attention for QLEN trailing query tokens per request.
+
+    Query row ``m`` is token ``m // GROUP`` of the request and head ``m % GROUP``;
+    all heads share one KV head. Token ``j`` of ``QLEN`` attends keys up to
+    ``length - (QLEN - 1 - j)`` and, with a window, no further back than
+    ``window_left`` positions. ``QLEN == 1`` is plain decode.
+    """
     request = tl.program_id(0)
     split = tl.program_id(1)
     page_begin = tl.load(indptr + request)
     page_count = tl.load(indptr + request + 1) - page_begin
     length = (page_count - 1) * PAGE + tl.load(last_lengths + request)
     length = tl.where(page_count > 0, length, 0)
-    # The decode query is the final readable token; keys older than window_left are hidden.
-    first = tl.where(window_left >= 0, tl.maximum(length - 1 - window_left, 0), 0)
+    rows = tl.arange(0, HEAD_PAD)
+    row_valid = rows < GROUP * QLEN
+    row_end = length - (QLEN - 1 - rows // GROUP)
+    row_first = tl.where(window_left >= 0, tl.maximum(row_end - 1 - window_left, 0), 0)
+    first = tl.where(
+        window_left >= 0, tl.maximum(length - QLEN - window_left, 0), 0
+    )
     visible = tl.maximum(length - first, 0)
     chunk = ((visible + SPLITS - 1) // SPLITS + BLOCK_N - 1) // BLOCK_N * BLOCK_N
     start = first + split * chunk
     end = tl.minimum(start + chunk, length)
-    heads = tl.arange(0, HEAD_PAD)
     channels = tl.arange(0, D)
-    head_valid = heads < GROUP
     q = tl.load(
-        query + request * query_request_stride + heads[:, None] * D + channels[None, :],
-        mask=head_valid[:, None],
+        query + request * query_request_stride + rows[:, None] * D + channels[None, :],
+        mask=row_valid[:, None],
         other=0,
     )
     running_max = tl.full([HEAD_PAD], float("-inf"), tl.float32)
@@ -555,7 +565,12 @@ def _paged_decode_partial(
             other=0,
         )
         scores = tl.dot(q, tl.trans(key_tile))
-        scores = tl.where(token_valid[None, :], scores, float("-inf"))
+        visible_mask = (
+            token_valid[None, :]
+            & (tokens[None, :] < row_end[:, None])
+            & (tokens[None, :] >= row_first[:, None])
+        )
+        scores = tl.where(visible_mask, scores, float("-inf"))
         new_max = tl.maximum(running_max, tl.max(scores, axis=1))
         safe_max = tl.where(new_max == float("-inf"), 0.0, new_max)
         probability = tl.exp(scores - safe_max[:, None])
@@ -575,11 +590,11 @@ def _paged_decode_partial(
         running_max = new_max
     base = (request * SPLITS + split) * HEAD_PAD
     tl.store(
-        partial_acc + (base + heads[:, None]) * D + channels[None, :],
+        partial_acc + (base + rows[:, None]) * D + channels[None, :],
         accumulator,
     )
-    tl.store(partial_ml + (base + heads) * 2, running_max)
-    tl.store(partial_ml + (base + heads) * 2 + 1, running_sum)
+    tl.store(partial_ml + (base + rows) * 2, running_max)
+    tl.store(partial_ml + (base + rows) * 2 + 1, running_sum)
 
 
 @triton.jit
@@ -629,12 +644,15 @@ def launch_paged_decode(
     window_left,
     page,
     heads,
+    query_len,
     splits,
     block_n,
     num_warps,
     num_stages,
 ):
-    requests, _, width = query.shape
+    rows, _, width = query.shape
+    requests = rows // query_len
+    padded = max(16, triton.next_power_of_2(heads * query_len))
     cast(Any, _paged_decode_partial)[(requests, splits)](
         query,
         keys,
@@ -645,13 +663,14 @@ def launch_paged_decode(
         partial_acc,
         partial_ml,
         window_left,
-        query.stride(0),
+        query.stride(0) * query_len,
         keys.stride(0),
         keys.stride(1),
         values.stride(0),
         values.stride(1),
         GROUP=heads,
-        HEAD_PAD=16,
+        QLEN=query_len,
+        HEAD_PAD=padded,
         D=width,
         PAGE=page,
         BLOCK_N=block_n,
@@ -659,12 +678,12 @@ def launch_paged_decode(
         num_warps=num_warps,
         num_stages=num_stages,
     )
-    cast(Any, _paged_decode_merge)[(requests, heads)](
+    cast(Any, _paged_decode_merge)[(requests, heads * query_len)](
         partial_acc,
         partial_ml,
         output,
-        output.stride(0),
-        HEAD_PAD=16,
+        output.stride(0) * query_len,
+        HEAD_PAD=padded,
         D=width,
         SPLITS=splits,
         num_warps=4,
@@ -728,4 +747,121 @@ def launch_kv_append(key, value, cache_keys, cache_values, pages, offsets):
         WIDTH=flat,
         BLOCK=block,
         num_warps=4,
+    )
+
+
+@triton.jit
+def _linear_rows(
+    x,
+    weight,
+    output,
+    N,
+    K,
+    ROWS: tl.constexpr,
+    ROWS_PAD: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+):
+    """Two to eight input rows: each weight tile is read once and used for every row."""
+    columns_out = tl.program_id(0) * BLOCK_N + tl.arange(0, BLOCK_N)
+    rows = tl.arange(0, ROWS_PAD)
+    row_valid = rows < ROWS
+    accumulator = tl.zeros([ROWS_PAD, BLOCK_N], tl.float32)
+    for start in range(0, K, BLOCK_K):
+        columns = start + tl.arange(0, BLOCK_K)
+        tile = tl.load(
+            weight + columns_out[:, None] * K + columns[None, :],
+            mask=(columns_out[:, None] < N) & (columns[None, :] < K),
+            other=0,
+        ).to(tl.float32)
+        vectors = tl.load(
+            x + rows[:, None] * K + columns[None, :],
+            mask=row_valid[:, None] & (columns[None, :] < K),
+            other=0,
+        ).to(tl.float32)
+        accumulator += tl.sum(vectors[:, None, :] * tile[None, :, :], axis=2)
+    tl.store(
+        output + rows[:, None] * N + columns_out[None, :],
+        accumulator.to(tl.bfloat16),
+        mask=row_valid[:, None] & (columns_out[None, :] < N),
+    )
+
+
+def launch_linear_rows(x, weight, output, *, rows, block_n, block_k, num_warps):
+    n, k = weight.shape
+    cast(Any, _linear_rows)[(triton.cdiv(n, block_n),)](
+        x,
+        weight,
+        output,
+        n,
+        k,
+        ROWS=rows,
+        ROWS_PAD=triton.next_power_of_2(rows),
+        BLOCK_N=block_n,
+        BLOCK_K=block_k,
+        num_warps=num_warps,
+        enable_fp_fusion=False,
+    )
+
+
+@triton.jit
+def _gate_up_gelu_rows(
+    x,
+    gate_weight,
+    up_weight,
+    output,
+    N,
+    K,
+    ROWS: tl.constexpr,
+    ROWS_PAD: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+):
+    columns_out = tl.program_id(0) * BLOCK_N + tl.arange(0, BLOCK_N)
+    rows = tl.arange(0, ROWS_PAD)
+    row_valid = rows < ROWS
+    gate_sum = tl.zeros([ROWS_PAD, BLOCK_N], tl.float32)
+    up_sum = tl.zeros([ROWS_PAD, BLOCK_N], tl.float32)
+    for start in range(0, K, BLOCK_K):
+        columns = start + tl.arange(0, BLOCK_K)
+        weight_mask = (columns_out[:, None] < N) & (columns[None, :] < K)
+        offsets = columns_out[:, None] * K + columns[None, :]
+        vectors = tl.load(
+            x + rows[:, None] * K + columns[None, :],
+            mask=row_valid[:, None] & (columns[None, :] < K),
+            other=0,
+        ).to(tl.float32)
+        gate = tl.load(gate_weight + offsets, mask=weight_mask, other=0).to(tl.float32)
+        up = tl.load(up_weight + offsets, mask=weight_mask, other=0).to(tl.float32)
+        gate_sum += tl.sum(vectors[:, None, :] * gate[None, :, :], axis=2)
+        up_sum += tl.sum(vectors[:, None, :] * up[None, :, :], axis=2)
+    g = gate_sum.to(tl.bfloat16).to(tl.float32)
+    u = up_sum.to(tl.bfloat16).to(tl.float32)
+    inner = 0.7978845608028654 * (g + 0.044715 * g * g * g)
+    activated = (0.5 * g) * (1.0 + libdevice.tanh(inner))
+    rounded = activated.to(tl.bfloat16).to(tl.float32)
+    tl.store(
+        output + rows[:, None] * N + columns_out[None, :],
+        rounded * u,
+        mask=row_valid[:, None] & (columns_out[None, :] < N),
+    )
+
+
+def launch_gate_up_gelu_rows(
+    x, gate_weight, up_weight, output, *, rows, block_n, block_k, num_warps
+):
+    n, k = gate_weight.shape
+    cast(Any, _gate_up_gelu_rows)[(triton.cdiv(n, block_n),)](
+        x,
+        gate_weight,
+        up_weight,
+        output,
+        n,
+        k,
+        ROWS=rows,
+        ROWS_PAD=triton.next_power_of_2(rows),
+        BLOCK_N=block_n,
+        BLOCK_K=block_k,
+        num_warps=num_warps,
+        enable_fp_fusion=False,
     )

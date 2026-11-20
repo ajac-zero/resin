@@ -1,0 +1,308 @@
+{
+  "status": "m1_kernel_sweep_only",
+  "gpu": "NVIDIA B200",
+  "triton": "3.9.0",
+  "results": [
+    {
+      "name": "o_local",
+      "N": 1536,
+      "K": 2048,
+      "cublas_us": 6.688499823212624,
+      "triton_us": 5.7669999077916145,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 1.1597884394234166,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999996422121211
+    },
+    {
+      "name": "o_global",
+      "N": 1536,
+      "K": 4096,
+      "cublas_us": 6.403000093996525,
+      "triton_us": 10.002000257372856,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 0.6401719585316576,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999996001370908
+    },
+    {
+      "name": "ple_gate",
+      "N": 256,
+      "K": 1536,
+      "cublas_us": 5.088500212877989,
+      "triton_us": 2.884000074118376,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 1.7643897649460074,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "ple_proj",
+      "N": 1536,
+      "K": 256,
+      "cublas_us": 3.160499967634678,
+      "triton_us": 2.3300000466406345,
+      "best": [
+        4,
+        256,
+        2
+      ],
+      "speedup": 1.3564377271972368,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "qkv_local",
+      "N": 2560,
+      "K": 1536,
+      "cublas_us": 5.154000129550695,
+      "triton_us": 7.17550003901124,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 0.7182774861026827,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999995172067674
+    },
+    {
+      "name": "qkv_global",
+      "N": 5120,
+      "K": 1536,
+      "cublas_us": 4.540500231087208,
+      "triton_us": 10.530499741435051,
+      "best": [
+        4,
+        512,
+        2
+      ],
+      "speedup": 0.43117614002889176,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999996549193811
+    },
+    {
+      "name": "q_local",
+      "N": 2048,
+      "K": 1536,
+      "cublas_us": 4.759499803185463,
+      "triton_us": 6.256499793380499,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 0.7607288356696037,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999999059504215
+    },
+    {
+      "name": "q_global",
+      "N": 4096,
+      "K": 1536,
+      "cublas_us": 5.194500088691711,
+      "triton_us": 9.053999558091164,
+      "best": [
+        4,
+        512,
+        2
+      ],
+      "speedup": 0.5737243585404876,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999998048223377
+    },
+    {
+      "name": "down_6144",
+      "N": 1536,
+      "K": 6144,
+      "cublas_us": 6.955000106245279,
+      "triton_us": 13.81049957126379,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 0.5036023548863433,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999993285443994
+    },
+    {
+      "name": "down_12288",
+      "N": 1536,
+      "K": 12288,
+      "cublas_us": 9.644499979913235,
+      "triton_us": 25.774499401450157,
+      "best": [
+        2,
+        1024,
+        2
+      ],
+      "speedup": 0.37418767401436337,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 0.9999988302233308
+    },
+    {
+      "name": "asst_pre_proj",
+      "N": 256,
+      "K": 3072,
+      "cublas_us": 4.698500037193298,
+      "triton_us": 4.728999920189381,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 0.9935504581283942,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_post_proj",
+      "N": 1536,
+      "K": 256,
+      "cublas_us": 3.1534999143332243,
+      "triton_us": 2.3235001135617495,
+      "best": [
+        4,
+        256,
+        2
+      ],
+      "speedup": 1.357219608437698,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0000000035732963
+    },
+    {
+      "name": "asst_q_local",
+      "N": 1024,
+      "K": 256,
+      "cublas_us": 3.1620000954717398,
+      "triton_us": 2.1244999952614307,
+      "best": [
+        4,
+        256,
+        2
+      ],
+      "speedup": 1.4883502483051967,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_q_global",
+      "N": 2048,
+      "K": 256,
+      "cublas_us": 2.0244999323040247,
+      "triton_us": 2.507499884814024,
+      "best": [
+        4,
+        256,
+        2
+      ],
+      "speedup": 0.8073778764915787,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_o_local",
+      "N": 256,
+      "K": 1024,
+      "cublas_us": 4.103499930351973,
+      "triton_us": 2.0175001118332148,
+      "best": [
+        2,
+        1024,
+        4
+      ],
+      "speedup": 2.0339527647526623,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_o_global",
+      "N": 256,
+      "K": 2048,
+      "cublas_us": 4.20599989593029,
+      "triton_us": 2.9009999707341194,
+      "best": [
+        1,
+        1024,
+        2
+      ],
+      "speedup": 1.4498448598280858,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "asst_down",
+      "N": 256,
+      "K": 2048,
+      "cublas_us": 4.217000212520361,
+      "triton_us": 2.9915000777691603,
+      "best": [
+        2,
+        1024,
+        4
+      ],
+      "speedup": 1.4096607397266352,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0
+    },
+    {
+      "name": "mlp_6144",
+      "N": 6144,
+      "K": 1536,
+      "current_path_us": 11.315000243484974,
+      "fused_us": 20.549500361084938,
+      "best": [
+        8,
+        512,
+        2
+      ],
+      "speedup": 0.5506216718004712,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0003894862641545
+    },
+    {
+      "name": "mlp_12288",
+      "N": 12288,
+      "K": 1536,
+      "current_path_us": 16.719000414013863,
+      "fused_us": 37.24699839949608,
+      "best": [
+        4,
+        512,
+        2
+      ],
+      "speedup": 0.4488683956407091,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.000347979867089
+    },
+    {
+      "name": "asst_mlp",
+      "N": 2048,
+      "K": 256,
+      "current_path_us": 6.316499784588814,
+      "fused_us": 3.924500197172165,
+      "best": [
+        2,
+        256,
+        2
+      ],
+      "speedup": 1.6095042597119058,
+      "max_err_ratio": 1.0,
+      "mean_err_ratio": 1.0005347693947588
+    }
+  ],
+  "method": "L2-cold rotating weights, graph of 64 calls, configs swept per fixed shape, fp64 oracle ratios (candidate/baseline) over sampled weight copies, synthetic weights/inputs, one seed"
+}

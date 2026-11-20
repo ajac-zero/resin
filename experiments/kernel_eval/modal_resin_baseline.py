@@ -145,6 +145,8 @@ if _mode:
     if _mode in ('upstream', 'fusedgelu'):
         _ek._M1_LINEAR.clear()
         _ek._M1_GATE_UP.clear()
+    if _mode in ('upstream', 'fusedgelu', 'm1', 'paged', 'nodraft'):
+        _ek._ROWS_LINEAR.clear()
     if _mode in ('upstream', 'fusedgelu', 'm1'):
         _ek._PAGED_DECODE.clear()
     if _mode in ('upstream', 'fusedgelu', 'm1', 'paged'):
@@ -204,10 +206,10 @@ def ab(modes: list, contexts: list, steps: int=48, log_logits: bool=False, draft
             'method':'fresh engine per run in one container; order as given; decode graphs only; prompts WildChat-derived artifact'}
 
 @app.function(image=image,gpu='B200',cpu=4,memory=16384,timeout=600,retries=0,max_containers=1,scaledown_window=2)
-def attn_study(contexts: list, layers: int=35, seed: int=7):
+def attn_study(contexts: list, layers: int=35, seed: int=7, qlen: int=1):
     """Paged q=1 attention: Triton split-KV kernel vs FlashInfer decode wrapper, L2-cold layer rotation."""
     import itertools,statistics,torch
-    from flashinfer import BatchDecodeWithPagedKVCacheWrapper
+    from flashinfer import BatchDecodeWithPagedKVCacheWrapper, BatchPrefillWithPagedKVCacheWrapper
     from resin_models_cuda.gemma4.edge_kernels import paged_decode_q1
     torch.manual_seed(seed)
     PAGE=64;HEADS=8;out=[]
@@ -229,25 +231,33 @@ def attn_study(contexts: list, layers: int=35, seed: int=7):
                 caches.append((k,v))
             perm=torch.randperm(total,dtype=torch.int32,device='cuda')[:pages].contiguous()
             indptr=torch.tensor([0,pages],dtype=torch.int32,device='cuda');last=torch.tensor([L-(pages-1)*PAGE],dtype=torch.int32,device='cuda')
-            q=torch.randn(1,HEADS,D,dtype=torch.bfloat16,device='cuda')
+            q=torch.randn(qlen,HEADS,D,dtype=torch.bfloat16,device='cuda')
             ws=torch.empty(128*1024*1024,dtype=torch.uint8,device='cuda')
             ip,ix,ll=indptr.clone(),torch.zeros(pages+8,dtype=torch.int32,device='cuda'),last.clone()
             ix[:pages]=perm
-            wrap=BatchDecodeWithPagedKVCacheWrapper(ws,'NHD',use_cuda_graph=True,paged_kv_indptr_buffer=ip,paged_kv_indices_buffer=ix,paged_kv_last_page_len_buffer=ll,backend='fa2',use_tensor_cores=True)
-            wrap.plan(indptr,perm,last,HEADS,1,D,PAGE,window_left=window,q_data_type=torch.bfloat16,kv_data_type=torch.bfloat16,o_data_type=torch.bfloat16,sm_scale=1.0,pos_encoding_mode='NONE')
+            if qlen==1:
+                wrap=BatchDecodeWithPagedKVCacheWrapper(ws,'NHD',use_cuda_graph=True,paged_kv_indptr_buffer=ip,paged_kv_indices_buffer=ix,paged_kv_last_page_len_buffer=ll,backend='fa2',use_tensor_cores=True)
+                wrap.plan(indptr,perm,last,HEADS,1,D,PAGE,window_left=window,q_data_type=torch.bfloat16,kv_data_type=torch.bfloat16,o_data_type=torch.bfloat16,sm_scale=1.0,pos_encoding_mode='NONE')
+            else:
+                qo=torch.tensor([0,qlen],dtype=torch.int32,device='cuda');qob=qo.clone()
+                wrap=BatchPrefillWithPagedKVCacheWrapper(ws,'NHD',use_cuda_graph=True,backend='auto',qo_indptr_buf=qob,paged_kv_indptr_buf=ip,paged_kv_indices_buf=ix,paged_kv_last_page_len_buf=ll)
+                wrap.plan(qo,indptr,perm,last,HEADS,1,D,PAGE,window_left=window,q_data_type=torch.bfloat16,kv_data_type=torch.bfloat16,o_data_type=torch.bfloat16,sm_scale=1.0,pos_encoding_mode='NONE',causal=True,disable_split_kv=True)
             fi=timed(lambda i:wrap.run(q,caches[i%layers]),layers)
             # fp64 oracle on layer 0
             def oracle(kv):
                 k=kv[0][perm.long()].reshape(-1,D)[:L].double();v=kv[1][perm.long()].reshape(-1,D)[:L].double()
-                lo=max(0,L-1-window) if window>=0 else 0
-                s=q[0].double()@k[lo:].T;p=torch.softmax(s,dim=-1);return p@v[lo:]
-            ref=oracle(caches[0]);fiout=wrap.run(q,caches[0])[0].double();fi_err=(fiout-ref).abs().max().item()
+                outs=[]
+                for j in range(qlen):
+                    end=L-(qlen-1-j);lo=max(0,end-1-window) if window>=0 else 0
+                    sc=q[j].double()@k[lo:end].T;outs.append(torch.softmax(sc,dim=-1)@v[lo:end])
+                return torch.stack(outs)
+            ref=oracle(caches[0]);fiout=wrap.run(q,caches[0]).double();fi_err=(fiout-ref).abs().max().item()
             best=None;tried=[]
             for splits,block,warps,stages in itertools.product((1,2,4,8,16),(16,32,64),(4,8),(2,3)):
                 cfg=(splits,block,warps,stages)
                 try:
-                    f=lambda i,cfg=cfg:paged_decode_q1(q,caches[i%layers][0],caches[i%layers][1],indptr,perm,last,window_left=window,page_size=PAGE,config=cfg)
-                    got=f(0)[0].double();err=(got-ref).abs().max().item()
+                    f=lambda i,cfg=cfg:paged_decode_q1(q,caches[i%layers][0],caches[i%layers][1],indptr,perm,last,window_left=window,page_size=PAGE,query_len=qlen,config=cfg)
+                    got=f(0).double();err=(got-ref).abs().max().item()
                     t=timed(f,layers)
                 except Exception as e:
                     continue
@@ -260,9 +270,9 @@ def attn_study(contexts: list, layers: int=35, seed: int=7):
             'method':'35 distinct synthetic KV layers rotated per graph; one request; fp64 oracle on layer 0; FlashInfer decode wrapper (use_tensor_cores, fa2, cuda-graph buffers) as Resin builds it'}
 
 @app.local_entrypoint()
-def main(approve_spend:bool=False,draft_tokens:int=3,unit_only:bool=False,trace:bool=False,gpu_tests:str='',diag:str='',real:bool=False,ab_modes:str='',ab_contexts:str='256,1024',ab_steps:int=48,ab_logits:bool=False,attn:str='',ab_draft:int=0,ab_trace:bool=False,ab_phases:bool=False):
+def main(approve_spend:bool=False,draft_tokens:int=3,unit_only:bool=False,trace:bool=False,gpu_tests:str='',diag:str='',real:bool=False,ab_modes:str='',ab_contexts:str='256,1024',ab_steps:int=48,ab_logits:bool=False,attn:str='',ab_draft:int=0,ab_trace:bool=False,ab_phases:bool=False,attn_qlen:int=1):
     if attn:
-        print(json.dumps(attn_study.remote([int(x) for x in attn.split(',')]),indent=2));return
+        print(json.dumps(attn_study.remote([int(x) for x in attn.split(',')],qlen=attn_qlen),indent=2));return
     if ab_modes:
         print(json.dumps(ab.remote(ab_modes.split(','),[int(x) for x in ab_contexts.split(',')],ab_steps,ab_logits,ab_draft,ab_trace,ab_phases),indent=2));return
     if gpu_tests:

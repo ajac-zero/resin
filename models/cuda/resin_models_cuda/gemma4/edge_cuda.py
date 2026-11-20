@@ -263,29 +263,50 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
         return wrappers
 
     def _decode_attention(self, wrapper, plan, is_local, query, keys, values):
-        """Use the split-KV q=1 kernel on the captured non-speculative decode path.
+        """Use the split-KV kernel on captured decode and uniform speculative verify.
 
-        Every other case (prefill, verification, long global history, host plans)
-        runs FlashInfer exactly as before.
+        One query per request (decode wrapper) or the fixed ``draft + 1`` queries per
+        request of a verify plan (prefill wrapper with device-side CSR). Every other
+        case (prefill, wide graphs, long global history, host plans) runs FlashInfer
+        exactly as before.
         """
-        from flashinfer import BatchDecodeWithPagedKVCacheWrapper
+        from flashinfer import (
+            BatchDecodeWithPagedKVCacheWrapper,
+            BatchPrefillWithPagedKVCacheWrapper,
+        )
 
         from resin_models_cuda.gemma4 import edge_kernels
 
         indptr = getattr(plan, "kv_indptr", None)
         if (
-            isinstance(wrapper, BatchDecodeWithPagedKVCacheWrapper)
-            and torch.is_tensor(indptr)
+            torch.is_tensor(indptr)
             and indptr.is_cuda
             and query.ndim == 3
-            and query.shape[0] == len(indptr) - 1
             and query.shape[-1] in edge_kernels._PAGED_DECODE
             and keys.ndim == 4
             and keys.shape[2] == 1
         ):
-            rows = len(indptr) - 1
-            capacity = len(plan.page_indices) // max(rows, 1) * PAGE_SIZE
-            if is_local or capacity <= edge_kernels._PAGED_DECODE_GLOBAL_MAX_TOKENS:
+            requests = len(indptr) - 1
+            query_len = 0
+            if (
+                isinstance(wrapper, BatchDecodeWithPagedKVCacheWrapper)
+                and query.shape[0] == requests
+            ):
+                query_len = 1
+            elif (
+                isinstance(wrapper, BatchPrefillWithPagedKVCacheWrapper)
+                and 2 <= self.speculative_draft_tokens + 1 <= 4
+                and torch.is_tensor(getattr(plan, "qo_indptr", None))
+                and len(plan.qo_indptr) == requests + 1
+                and query.shape[0] == requests * (self.speculative_draft_tokens + 1)
+            ):
+                query_len = self.speculative_draft_tokens + 1
+            capacity = len(plan.page_indices) // max(requests, 1) * PAGE_SIZE
+            if query_len and (
+                is_local
+                or query_len > 1
+                or capacity <= edge_kernels._PAGED_DECODE_GLOBAL_MAX_TOKENS
+            ):
                 return edge_kernels.paged_decode_q1(
                     query,
                     keys,
@@ -295,6 +316,7 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
                     plan.last_page_lengths,
                     window_left=self.sliding_window - 1 if is_local else -1,
                     page_size=PAGE_SIZE,
+                    query_len=query_len,
                 )
         return wrapper.run(query, (keys, values))
 

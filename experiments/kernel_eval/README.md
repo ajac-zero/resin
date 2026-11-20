@@ -677,3 +677,48 @@ containers (e.g. 1.66 vs 1.755 ms at ctx256 for related builds), so the vLLM com
 (separate containers) is within noise at ctx128/1024 and should be called mixed.
 Remaining cost: the verify phase (M=4 rows: unfused cuBLAS projections and FlashInfer's
 q=4 attention + merge kernels) and the assistant's full-vocabulary masked head.
+
+## Speculative verify (4-row) kernels, clean A/B, and what "identical tokens" can mean
+
+**Verify-phase changes (fork):** (1) `paged_decode_q1(..., query_len=2..4)` generalizes the
+split-KV kernel to the trailing `draft + 1` causal queries per request (rows = token x
+head, per-row causal/window masks). Isolated B200 study against FlashInfer's prefill
+wrapper planned exactly as Resin plans verify (`disable_split_kv=True`;
+`b200-paged-q4-study.json`): local layers 9-24 us -> 5.5-8.5 us (x1.6-3.0); global layers
+11 -> 7.9 us at 128 tokens but **120 -> 17 us at 2K tokens (x6.9)** because FlashInfer's non-split
+verify launch grows with history. fp64 error is identical (0.0078). So verify uses the
+kernel at every history length (only one-query decode keeps the <=1K global gate).
+(2) A 2-4 row projection kernel (`launch_linear_rows`) reads each weight tile once for all rows;
+it beat cuBLAS only on small shapes (PLE gate x1.76, PLE projection x1.36, local o_proj
+x1.16) and lost badly on MLP/QKV/global o_proj (x0.4-0.7), so only those three shapes are
+enabled (`b200-rows4-kernel-sweep.json`). Tests: 25 B200 pytest cases pass (9 multi-query
+causal vs fp64 oracle incl. windows and query_len 2/3/4; 9 row-kernel cases with graph
+replay; fallbacks; the earlier decode cases), run ap-... logs retained under resin-audit/runs/
+
+**Clean A/B** (`b200-resin-spec3-final3-ab.json`, ap-61ZZU93OcISxA83qWwhIqr; one container;
+upstream/full x2; the A/B overlay now also clears the row-kernel table - an earlier run,
+`final2`, wrongly left them on in "upstream" and is superseded): verify+draft **step time
+4.27 -> 3.63 ms (-15.0%)** at every context (4.270/4.272/4.283/4.287 -> 3.631/3.633/3.648/3.647).
+
+**Per-token numbers are confounded by trajectory divergence.** Speculative acceptance
+depends on the text; any change in numerics can flip a near-tie and change the continuation,
+and then the timed window covers different text. Measured: at ctx 256 acceptance and tokens
+are identical across modes (committed ms/token **1.983 -> 1.690, -14.8%**); at ctx128 /
+512 / 1024 acceptance differs between modes (0.785 vs 0.812, 0.528 vs 0.340, 0.271 vs
+0.312), so their per-token ratios (-16.9%, +8.3%, -21.1%) are NOT valid speedups. Use step
+time. Logged verify logits (`b200-resin-spec3-logits.json`, ap-D1N7JpzebXp44jskRXIDSv) show the
+first divergences are exact or one-BF16-step ties: ctx512 step 4 position 1, tokens
+1018/125546 at 16.125/16.125 (baseline margin 0.000) vs 16.125/16.0 in the full path; ctx1024
+step 7, 9966/538 at 19.875/19.75 vs 19.75/19.75. In the baseline 14 of 424 verify positions
+(3.3%) are within one BF16 step of a tie (5 exact), so ~1 flip per 100-300 positions is
+expected from ANY numerically different implementation. Even the unmodified speculative path does not
+reproduce the non-speculative greedy sequence (diverges at token 49 at ctx256, 26 at
+ctx1024). "Identical tokens" is therefore a strong check only over short horizons
+(non-speculative: 435 steps, 0 flips); for speculative verify the right criterion is that
+divergences occur only at <=1-ulp margins, which held in both cases inspected.
+
+**Cross-engine caveat:** vLLM/SGLang per-prompt ms/token were also measured on text that
+matches Resin's only for the first 22 tokens, so their acceptance and ours differ afterward.
+Treat the speculative comparison as approximate: Resin (step-time-improved, now within
+roughly -14%..+3% of vLLM MTP-3 depending on prompt, 23-30% faster than SGLang NEXTN on
+the aligned prompts) is competitive, not a demonstrated win.

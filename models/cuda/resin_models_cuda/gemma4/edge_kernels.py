@@ -103,14 +103,24 @@ _M1_GATE_UP = {
 }
 
 
-def _m1_ready(x: Tensor, weight: Tensor) -> bool:
+# Two to four rows (speculative verification): only shapes where the row kernel beat
+# cuBLAS in isolation (experiments/kernel_eval/results/b200-rows4-kernel-sweep.json).
+_ROWS_LINEAR = {
+    (256, 1536): (1, 1024, 2),
+    (1536, 256): (4, 256, 2),
+    (1536, 2048): (2, 1024, 2),
+}
+
+
+def _m1_ready(x: Tensor, weight: Tensor, rows: int = 1) -> bool:
     return (
         x.is_cuda
         and x.dtype == torch.bfloat16
         and weight.dtype == torch.bfloat16
         and weight.device == x.device
         and weight.ndim == 2
-        and x.numel() == weight.shape[1]
+        and x.numel() == rows * weight.shape[1]
+        and x.shape[-1] == weight.shape[1]
         and x.is_contiguous()
         and weight.is_contiguous()
         and not torch.is_grad_enabled()
@@ -124,18 +134,34 @@ def linear_m1(module, x: Tensor) -> Tensor:
     reduction order differs from cuBLAS, so results can differ by BF16 rounding.
     """
     weight = module.weight
-    config = _M1_LINEAR.get(tuple(weight.shape)) if module.bias is None else None
-    if config is None or not _m1_ready(x, weight):
+    if module.bias is not None or weight.ndim != 2 or x.shape[-1] != weight.shape[1]:
         return module(x)
-    from resin_models_cuda.gemma4.edge_kernels_triton import launch_linear_m1
-
+    rows = x.numel() // weight.shape[1]
+    shape = tuple(weight.shape)
+    if rows == 1:
+        config = _M1_LINEAR.get(shape)
+    elif 2 <= rows <= 4:
+        config = _ROWS_LINEAR.get(shape)
+    else:
+        config = None
+    if config is None or not _m1_ready(x, weight, rows):
+        return module(x)
     output = torch.empty(
         (*x.shape[:-1], weight.shape[0]), dtype=x.dtype, device=x.device
     )
     block_n, block_k, warps = config
-    launch_linear_m1(
-        x, weight, output, block_n=block_n, block_k=block_k, num_warps=warps
-    )
+    if rows == 1:
+        from resin_models_cuda.gemma4.edge_kernels_triton import launch_linear_m1
+
+        launch_linear_m1(
+            x, weight, output, block_n=block_n, block_k=block_k, num_warps=warps
+        )
+    else:
+        from resin_models_cuda.gemma4.edge_kernels_triton import launch_linear_rows
+
+        launch_linear_rows(
+            x, weight, output, rows=rows, block_n=block_n, block_k=block_k, num_warps=warps
+        )
     return output
 
 
@@ -170,6 +196,11 @@ def gate_up_gelu_m1(gate_proj, up_proj, x: Tensor) -> Tensor | None:
 # tokens; callers gate on _PAGED_DECODE_GLOBAL_MAX_TOKENS.
 _PAGED_DECODE = {256: (16, 32, 4, 3), 512: (16, 32, 4, 3)}
 _PAGED_DECODE_GLOBAL_MAX_TOKENS = 1024
+# Speculative verification (2-4 trailing queries per request), from
+# experiments/kernel_eval/results/b200-paged-q4-study.json. FlashInfer's non-split verify
+# launch grows with history (global layers: 11 us at 128 tokens, 120 us at 2K), so the
+# kernel wins at every swept length and needs no global-history gate.
+_PAGED_VERIFY = {256: (16, 64, 8, 3), 512: (16, 64, 8, 2)}
 _PAGED_DECODE_WORKSPACE: dict = {}
 
 
@@ -183,20 +214,24 @@ def paged_decode_q1(
     *,
     window_left: int,
     page_size: int,
+    query_len: int = 1,
     config: tuple[int, int, int, int] | None = None,
 ) -> Tensor:
-    """Single-token paged attention for one shared KV head (Gemma Edge decode).
+    """Paged attention for the trailing ``query_len`` tokens of each request (Gemma Edge).
 
-    ``query`` is ``[requests, heads, width]`` BF16 with at most 16 heads sharing
-    the KV head; ``keys``/``values`` are NHD page views ``[pages, page, 1, width]``
+    ``query`` is ``[requests * query_len, heads, width]`` BF16 (``heads * query_len``
+    at most 32) sharing one KV head, the KV length already including those tokens; ``keys``/``values`` are NHD page views ``[pages, page, 1, width]``
     with unit channel stride. ``window_left`` below zero means full history. The
     softmax scale is 1.0 (Gemma normalizes Q/K), the query is the last readable
     token, and no logit softcap is applied. Kernel launches use only fixed grids
     and read CSR lengths on the device, so they replay in CUDA graphs.
     """
-    requests, heads, width = query.shape
+    rows, heads, width = query.shape
+    requests = rows // query_len if query_len > 0 else 0
     if (
-        not query.is_cuda
+        query_len not in (1, 2, 3, 4)
+        or rows != requests * query_len
+        or not query.is_cuda
         or query.dtype != torch.bfloat16
         or keys.dtype != torch.bfloat16
         or values.dtype != torch.bfloat16
@@ -207,7 +242,7 @@ def paged_decode_q1(
         or values.shape[1:] != (page_size, 1, width)
         or keys.stride(3) != 1
         or values.stride(3) != 1
-        or heads > 16
+        or heads * query_len > 32
         or width not in _PAGED_DECODE
         or any(
             tensor.dtype != torch.int32 or not tensor.is_cuda or not tensor.is_contiguous()
@@ -217,13 +252,16 @@ def paged_decode_q1(
         or len(last_lengths) != requests
     ):
         raise ValueError("paged decode requires CUDA BF16 single-KV-head NHD inputs")
-    splits, block_n, warps, stages = config or _PAGED_DECODE[width]
-    key = (query.device, requests, width, splits)
+    splits, block_n, warps, stages = config or (
+        _PAGED_DECODE[width] if query_len == 1 else _PAGED_VERIFY[width]
+    )
+    padded = max(16, 1 << (heads * query_len - 1).bit_length())
+    key = (query.device, requests, width, splits, padded)
     workspace = _PAGED_DECODE_WORKSPACE.get(key)
     if workspace is None:
         workspace = (
-            torch.empty(requests * splits * 16 * width, dtype=torch.float32, device=query.device),
-            torch.empty(requests * splits * 16 * 2, dtype=torch.float32, device=query.device),
+            torch.empty(requests * splits * padded * width, dtype=torch.float32, device=query.device),
+            torch.empty(requests * splits * padded * 2, dtype=torch.float32, device=query.device),
         )
         _PAGED_DECODE_WORKSPACE[key] = workspace
     from resin_models_cuda.gemma4.edge_kernels_triton import launch_paged_decode
@@ -242,6 +280,7 @@ def paged_decode_q1(
         window_left=window_left,
         page=page_size,
         heads=heads,
+        query_len=query_len,
         splits=splits,
         block_n=block_n,
         num_warps=warps,

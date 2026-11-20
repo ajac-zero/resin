@@ -892,3 +892,59 @@ def test_fused_assistant_step_matches_reference_step_with_flashinfer_decode():
     # Without plans the original code path runs unchanged.
     fallback_logits, fallback_hidden = model.forward_step(embeds, positions, **common)
     torch.testing.assert_close(fallback_hidden, expected_hidden, atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("query_len", [2, 3, 4])
+@pytest.mark.parametrize("width,window", [(256, 511), (512, -1), (256, 100)])
+@torch.inference_mode()
+def test_paged_multi_query_causal_matches_fp64_oracle(query_len, width, window):
+    lengths = [query_len, 17, 64, 65, 300, 513, 1000]
+    keys, values, _, indptr, indices, last, spans = _paged_batch(lengths, width, seed=width + query_len)
+    generator = torch.Generator(device="cuda").manual_seed(query_len)
+    query = torch.randn(len(lengths) * query_len, 8, width, dtype=torch.bfloat16, device="cuda", generator=generator)
+    actual = paged_decode_q1(query, keys, values, indptr, indices, last,
+                             window_left=window, page_size=64, query_len=query_len)
+    assert actual.shape == query.shape and torch.isfinite(actual).all()
+    for row, (length, pages) in enumerate(zip(lengths, spans)):
+        flat_keys = keys[pages.long()].reshape(-1, width)[:length].double()
+        flat_values = values[pages.long()].reshape(-1, width)[:length].double()
+        for token in range(query_len):
+            end = length - (query_len - 1 - token)
+            first = max(0, end - 1 - window) if window >= 0 else 0
+            scores = query[row * query_len + token].double() @ flat_keys[first:end].T
+            oracle = torch.softmax(scores, dim=-1) @ flat_values[first:end]
+            error = (actual[row * query_len + token].double() - oracle).abs().max()
+            assert error <= 0.03, (length, token, error.item())
+
+
+@pytest.mark.parametrize("rows", [2, 3, 4])
+@pytest.mark.parametrize("shape", [(256, 1536), (1536, 256), (1536, 2048)])
+@torch.inference_mode()
+def test_linear_rows_matches_fp64_oracle_and_replays(rows, shape):
+    torch.manual_seed(rows * 1000 + shape[0])
+    layer = torch.nn.Linear(shape[1], shape[0], bias=False, dtype=torch.bfloat16, device="cuda")
+    layer.weight.copy_(torch.randn_like(layer.weight) * 0.05)
+    x = torch.randn(rows, shape[1], dtype=torch.bfloat16, device="cuda")
+
+    def operation():
+        return linear_m1(layer, x)
+
+    graph, captured = _capture(operation)
+    for scale in (1.0, 30.0, 0.001):
+        x.copy_(torch.randn_like(x) * scale)
+        actual = operation()
+        oracle = x.double() @ layer.weight.double().T
+        assert torch.all((actual.double() - oracle).abs() <= _bf16_ulp_bound(oracle) + 1e-30)
+        assert (actual.double() - oracle).abs().max() <= (layer(x).double() - oracle).abs().max() * 1.01 + 1e-30
+        _assert_replay(graph, captured, actual)
+
+
+@torch.inference_mode()
+def test_linear_rows_falls_back_outside_contract():
+    layer = torch.nn.Linear(1536, 256, bias=False, dtype=torch.bfloat16, device="cuda")
+    for rows in (5, 8, 64):
+        x = torch.randn(rows, 1536, dtype=torch.bfloat16, device="cuda")
+        torch.testing.assert_close(linear_m1(layer, x), layer(x), atol=0, rtol=0)
+    other = torch.nn.Linear(1536, 6144, bias=False, dtype=torch.bfloat16, device="cuda")
+    x = torch.randn(4, 1536, dtype=torch.bfloat16, device="cuda")
+    torch.testing.assert_close(linear_m1(other, x), other(x), atol=0, rtol=0)
