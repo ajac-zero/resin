@@ -442,3 +442,24 @@ def test_native_state_copy_zero_restore_and_exact_checkpoint(dtype):
     torch.testing.assert_close(
         arena[:, 3 * width :], before[:, 3 * width :], rtol=0, atol=0
     )
+
+
+def test_single_sample_acceptance_for_non_speculative_decode():
+    import pytest
+    import torch
+
+    from resin.backend.cuda.completion import DeviceAcceptance
+
+    positions = torch.tensor([5, 9])
+    for samples in (torch.tensor([11, 22]), torch.tensor([[11], [22]])):
+        accepted = DeviceAcceptance.from_single_samples(samples, positions)
+        assert accepted.draft_tokens == 0
+        assert accepted.tokens.tolist() == [[11], [22]]
+        assert accepted.counts.tolist() == [1, 1]
+        feedback = accepted.feedback()
+        assert feedback.token_ids.tolist() == [11, 22]
+        assert feedback.positions.tolist() == [6, 10]
+    with pytest.raises(ValueError):
+        DeviceAcceptance.from_single_samples(torch.zeros(2, 2, dtype=torch.long), positions)
+    with pytest.raises(ValueError):
+        DeviceAcceptance.from_single_samples(torch.tensor([1]), positions)

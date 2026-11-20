@@ -695,11 +695,11 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
         if feedback is not None and feedback.hidden_lease is not None:
             # Retain the prior hidden source through its queued consumer graph.
             feedback.hidden_lease.record_use()
-        accepted = (
-            self._graph_acceptance[shape]
-            if self.speculative_draft_tokens
-            else DeviceAcceptance.from_samples(output[:, :0], output, positions)
-        )
+        if self.speculative_draft_tokens:
+            accepted = self._graph_acceptance[shape]
+        else:
+            # Without speculation the graph emits one sampled token per row.
+            accepted = DeviceAcceptance.from_single_samples(output, positions)
         next_inputs = accepted.feedback()
         hidden_lease = None
         if self.speculative_draft_tokens:

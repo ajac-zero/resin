@@ -355,27 +355,46 @@ Measured (single run, single repeat, batch 1, 256-token context):
   **Acceptance is workload dependent; this is not a chat/summarization quality or
   speedup number.**
 - Prefill 256 tokens: median 17.3 ms over 3 cohorts with the assistant loaded
-  (a draft-free diagnostic run measured ~7.7-8.8 ms; that run is not retained as
-  a result because its decode failed, see below). Only 3 samples.
+  (draft-free runs measured 7.7-8.8 ms; see below). Only 3 samples.
 
 Context for the earlier HF static-cache graph reference (7.9 ms/token): that is a
 token-at-a-time greedy reference; Resin commits ~3.5 tokens per 4.1 ms step here
 (~1.2 ms per committed token). These are DIFFERENT workloads/algorithms (speculative
 decode vs not), different batch semantics and token sources, so the ratio is not a
-like-for-like speedup. A like-for-like comparison needs Resin with draft_tokens=0,
-which currently does not run (next).
+like-for-like speedup. The like-for-like draft-free run is below.
 
-**Probable upstream defect found (unconfirmed beyond this repro):** with
-`draft_tokens=0`, Resin's Gemma E2B decode fails in `edge_cuda.py::_finish_enqueue`
-with `IndexError: too many indices for tensor of dimension 1`
-(`DeviceAcceptance.from_samples(output[:, :0], output, ...)` where the non-speculative
-sampler output is 1-D). Upstream Gemma E2B/E4B tests only exercise
-`speculative_draft_tokens=3`. This is a lead worth a minimal repro/fix, not yet a
-fixed or reported issue. Prefill at draft 0 did run successfully on B200 first.
+**Draft-free decode defect: reproduced, FIXED on our fork, verified on B200.**
+With `draft_tokens=0`, E2B decode failed in `edge_cuda.py::_finish_enqueue`
+(`IndexError: too many indices for tensor of dimension 1`) because the
+non-speculative sampler returns `[rows]` while acceptance needs an empty draft block
+plus one bonus column. Upstream Gemma E2B/E4B tests only used
+`speculative_draft_tokens=3`. Fix: new `DeviceAcceptance.from_single_samples`
+(accepts `[rows]` or `[rows,1]`, rejects other shapes) used by the Edge runner; CPU
+regression test `tests/test_cuda_completion.py::test_single_sample_acceptance_for_non_speculative_decode`
+passes (13 passed / 4 GPU-only skipped, Modal CPU run ap-hffnoxyzsvM1sqA9f9OAl6).
+This is a fork change, not yet reported or offered upstream.
+
+Like-for-like draft-free Resin on B200 (same experimental overrides, batch 1,
+256-token context; two separate runs of the final code path, results
+`results/b200-resin-draft0.json`, final run ap-yCODlAKCSeSz9LNfGSIyX6):
+- Decode: **2.961 ms/token median**, range 2.955-2.970 ms over 16 steps, 16 graph
+  replays, 0 eager fallbacks. The pre-refactor run measured 2.979 ms.
+- Prefill 256 tokens: 8.085 ms median (n=3). An earlier identical-config run showed
+  17.5 ms; treat prefill as noisy until measured with more cohorts.
+- Versus the HF static-cache CUDA-graph reference (7.906 ms/token, same model,
+  same batch, similar 256-token context): Resin is ~2.7x faster per token. The
+  comparison is greedy single-token decode on both sides, but prompts differ
+  (repeated English text vs Resin's synthetic deterministic token ids) and the
+  harnesses differ (HF includes explicit position/mask updates). Directionally
+  reliable; not a controlled benchmark and not a comparison to vLLM/SGLang.
+- Arithmetic hint, not a measurement: ~2+ B parameters read per decoded token in
+  BF16 is ~4-5 GB; at ~7 TB/s achievable HBM bandwidth that is a ~0.7 ms floor, so
+  2.96 ms is several times above bandwidth-bound. Per-kernel profiling is needed
+  to tell launch/latency/attention/head costs apart before choosing a target.
 
 Process notes: three setup failures preceded success and were all CPU/image or
 Python-path problems, not GPU measurements: (1) a build killed by my tool abort,
 stopped explicitly; (2) the source tree shadowed the installed package because
 `scripts/bench.py` prepends its repo root, so the image now keeps only `deploy/`
 and `scripts/` in `/opt/aux` and deletes the source tree; (3) the draft-free decode
-failure above. No persistent volumes or servers; all apps stopped, zero tasks.
+failure fixed below. No persistent volumes or servers; all apps stopped, zero tasks.

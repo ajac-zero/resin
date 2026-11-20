@@ -78,6 +78,18 @@ class DeviceAcceptance:
         )
 
     @classmethod
+    def from_single_samples(cls, samples: torch.Tensor, positions: torch.Tensor) -> Self:
+        """Non-speculative decode: one sampled token per row, no drafts.
+
+        Accepts the sampler's ``[rows]`` output (or an explicit ``[rows, 1]``).
+        """
+        if samples.ndim == 1:
+            samples = samples[:, None]
+        if samples.ndim != 2 or samples.shape[1] != 1:
+            raise ValueError("non-speculative samples must be [rows] or [rows, 1]")
+        return cls.from_samples(samples[:, :0], samples, positions)
+
+    @classmethod
     def _from_accepted(
         cls,
         tokens: torch.Tensor,

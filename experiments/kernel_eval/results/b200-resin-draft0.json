@@ -1,0 +1,293 @@
+{
+  "status": "experimental_resin_b200_baseline",
+  "torch": "2.15.0+cu132",
+  "gpu": "NVIDIA B200",
+  "records": [
+    {
+      "schema_version": 1,
+      "phase": "prefill",
+      "context_length": 256,
+      "shared_prefix_tokens": 0,
+      "private_prompt_tokens": 256,
+      "cached_tokens_min": 0,
+      "cached_tokens_max": 0,
+      "batch_size": 1,
+      "global_batch_size": 1,
+      "measured_global_batch_size_min": 1,
+      "measured_global_batch_size_max": 1,
+      "gpu_count": 1,
+      "attn_dp": 1,
+      "prefill_tokens": 256.0,
+      "input_tokens": 768,
+      "draft_tokens": 0,
+      "measured_accept_rate": null,
+      "balanced_experts": false,
+      "balanced_experts_scope": null,
+      "warmup_steps": 1,
+      "measure_steps": 3,
+      "step_seconds": [
+        0.009102357999992705,
+        0.008084658000001355,
+        0.00787584200000424
+      ],
+      "prefill_seconds": [
+        0.009102357999992705,
+        0.008084658000001355,
+        0.00787584200000424
+      ],
+      "prefill_warmup_cohorts": 1,
+      "prefill_measure_cohorts": 3,
+      "window_seconds": 0.0250628579999983,
+      "committed_tokens": 3,
+      "measured_context_start_min": 0,
+      "measured_context_start_max": 0,
+      "measured_context_end_min": 256,
+      "measured_context_end_max": 256,
+      "graph_counts": {
+        "decode.replay_count": 0,
+        "decode.eager_fallback_count": 0,
+        "prefill.replay_count": 105,
+        "prefill.eager_fallback_count": 0
+      },
+      "runner_counts": {
+        "attention_plan_cache.hits": 0,
+        "attention_plan_cache.misses": 0,
+        "attention_metadata.device_rebuilds": 0,
+        "device_completion.enqueues": 0,
+        "device_hidden.allocations": 0,
+        "device_feedback.continuations": 0
+      },
+      "overlap_counts": {
+        "enqueues": 0,
+        "continuations": 0
+      },
+      "metadata": {
+        "model": "gemma4-e2b",
+        "implementation": "resin",
+        "implementation_version": "0.1.0",
+        "checkpoint": "/opt/model",
+        "hardware": "NVIDIA B200",
+        "parallelism": {
+          "world_size": 1,
+          "attn_dp": 1,
+          "attn_tp": 1,
+          "cp": 1,
+          "ep": 1
+        },
+        "graphs": {
+          "prefill": "breakable",
+          "decode": "full"
+        },
+        "quant": "checkpoint",
+        "expert_backend": "flashinfer",
+        "load_seconds": 4.956371031000001,
+        "capture_seconds": 82.666888466,
+        "profile_graph_phases": false,
+        "overlap": true,
+        "timing": "continuous_completions",
+        "prefill_chunk_size": 1024,
+        "context_capacity": 280,
+        "max_batch_tokens": 1024,
+        "capacity_skipped_cases": [],
+        "cache_capacity_probes": [],
+        "configured_batch_capacity": 1,
+        "requested_decode_batch_catalog": [
+          1
+        ],
+        "cache_capacity": {
+          "total_memory_bytes": 191512838144,
+          "free_memory_bytes": 181174140928,
+          "memory_utilization": 0.15,
+          "protected_free_bytes": 162785912423,
+          "overhead_bytes": 369098752,
+          "cache_budget_bytes": 18019129753,
+          "bytes_per_parent": 786432,
+          "reserved_parent_count": 1,
+          "parent_capacity": 22911,
+          "allocation_bytes": 18018729984
+        },
+        "max_prefill_tokens": 131072,
+        "budget_skipped_cases": [],
+        "prompt_workload": {
+          "prompt_source_id": "deterministic-token-ids-v1"
+        },
+        "sampling": {
+          "temperature": 0.0,
+          "top_p": 1.0,
+          "top_k": null,
+          "seed": 41
+        },
+        "sampling_filter_order": "top-p-then-top-k",
+        "repeat": 1
+      },
+      "local_output_token_ids": [
+        [
+          8509
+        ]
+      ],
+      "numa": {
+        "mode": "off",
+        "bindings": [
+          null
+        ]
+      }
+    },
+    {
+      "schema_version": 1,
+      "phase": "decode",
+      "context_length": 256,
+      "shared_prefix_tokens": 0,
+      "private_prompt_tokens": 256,
+      "cached_tokens_min": 0,
+      "cached_tokens_max": 0,
+      "batch_size": 1,
+      "global_batch_size": 1,
+      "measured_global_batch_size_min": 1,
+      "measured_global_batch_size_max": 1,
+      "gpu_count": 1,
+      "attn_dp": 1,
+      "prefill_tokens": 0.0,
+      "input_tokens": 0,
+      "draft_tokens": 0,
+      "measured_accept_rate": null,
+      "balanced_experts": false,
+      "balanced_experts_scope": null,
+      "warmup_steps": 4,
+      "measure_steps": 16,
+      "step_seconds": [
+        0.0029546210000006567,
+        0.002955501000002414,
+        0.0029584400000004507,
+        0.0029565910000002305,
+        0.0029582909999987805,
+        0.0029602209999950446,
+        0.002968089999995982,
+        0.0029701410000058104,
+        0.0029614510000044447,
+        0.0029683799999986604,
+        0.0029652609999999413,
+        0.0029681599999946684,
+        0.0029607010000063383,
+        0.0029687509999973827,
+        0.002958419999998796,
+        0.002962001000000214
+      ],
+      "window_seconds": 0.047395020999999815,
+      "committed_tokens": 16,
+      "measured_context_start_min": 260,
+      "measured_context_start_max": 260,
+      "measured_context_end_min": 276,
+      "measured_context_end_max": 276,
+      "graph_counts": {
+        "decode.replay_count": 16,
+        "decode.eager_fallback_count": 0,
+        "prefill.replay_count": 0,
+        "prefill.eager_fallback_count": 0
+      },
+      "runner_counts": {
+        "attention_plan_cache.hits": 32,
+        "attention_plan_cache.misses": 0,
+        "attention_metadata.device_rebuilds": 0,
+        "device_completion.enqueues": 16,
+        "device_hidden.allocations": 0,
+        "device_feedback.continuations": 16
+      },
+      "overlap_counts": {
+        "enqueues": 16,
+        "continuations": 16
+      },
+      "metadata": {
+        "model": "gemma4-e2b",
+        "implementation": "resin",
+        "implementation_version": "0.1.0",
+        "checkpoint": "/opt/model",
+        "hardware": "NVIDIA B200",
+        "parallelism": {
+          "world_size": 1,
+          "attn_dp": 1,
+          "attn_tp": 1,
+          "cp": 1,
+          "ep": 1
+        },
+        "graphs": {
+          "prefill": "breakable",
+          "decode": "full"
+        },
+        "quant": "checkpoint",
+        "expert_backend": "flashinfer",
+        "load_seconds": 4.956371031000001,
+        "capture_seconds": 82.666888466,
+        "profile_graph_phases": false,
+        "overlap": true,
+        "timing": "continuous_completions",
+        "prefill_chunk_size": 1024,
+        "context_capacity": 280,
+        "max_batch_tokens": 1024,
+        "capacity_skipped_cases": [],
+        "cache_capacity_probes": [],
+        "configured_batch_capacity": 1,
+        "requested_decode_batch_catalog": [
+          1
+        ],
+        "cache_capacity": {
+          "total_memory_bytes": 191512838144,
+          "free_memory_bytes": 181174140928,
+          "memory_utilization": 0.15,
+          "protected_free_bytes": 162785912423,
+          "overhead_bytes": 369098752,
+          "cache_budget_bytes": 18019129753,
+          "bytes_per_parent": 786432,
+          "reserved_parent_count": 1,
+          "parent_capacity": 22911,
+          "allocation_bytes": 18018729984
+        },
+        "max_prefill_tokens": 131072,
+        "budget_skipped_cases": [],
+        "prompt_workload": {
+          "prompt_source_id": "deterministic-token-ids-v1"
+        },
+        "sampling": {
+          "temperature": 0.0,
+          "top_p": 1.0,
+          "top_k": null,
+          "seed": 41
+        },
+        "sampling_filter_order": "top-p-then-top-k",
+        "repeat": 1
+      },
+      "local_output_token_ids": [
+        [
+          8509,
+          17964,
+          7765,
+          4928,
+          28628,
+          27689,
+          27333,
+          18945,
+          21065,
+          18407,
+          9338,
+          24759,
+          27505,
+          25417,
+          2538,
+          14185,
+          28856,
+          28705,
+          16977,
+          20678,
+          3103,
+          15247
+        ]
+      ],
+      "numa": {
+        "mode": "off",
+        "bindings": [
+          null
+        ]
+      }
+    }
+  ],
+  "limitations": "Minimal model-specific dependency image; experimental B200 overrides, not released preset; synthetic batch1 workload; serving baseline not yet independently qualified."
+}
