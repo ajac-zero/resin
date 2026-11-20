@@ -693,7 +693,7 @@ it beat cuBLAS only on small shapes (PLE gate x1.76, PLE projection x1.36, local
 x1.16) and lost badly on MLP/QKV/global o_proj (x0.4-0.7), so only those three shapes are
 enabled (`b200-rows4-kernel-sweep.json`). Tests: 25 B200 pytest cases pass (9 multi-query
 causal vs fp64 oracle incl. windows and query_len 2/3/4; 9 row-kernel cases with graph
-replay; fallbacks; the earlier decode cases), run ap-... logs retained under resin-audit/runs/
+replay; fallbacks; the earlier decode cases); Modal run logs are kept locally under resin-audit/runs/
 
 **Clean A/B** (`b200-resin-spec3-final3-ab.json`, ap-61ZZU93OcISxA83qWwhIqr; one container;
 upstream/full x2; the A/B overlay now also clears the row-kernel table - an earlier run,
