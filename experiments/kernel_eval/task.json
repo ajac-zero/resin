@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "task_id": "gemma4-edge-gelu-tanh-mul-bf16-v1",
+  "source_revision": "754c2c6360d2fa67ce1160841982fdd002b1ca11",
+  "model": "google/gemma-4-E2B-it",
+  "model_revision": "3e22461f65e89153144f8adb70e3b8c2cc9845a7",
+  "operation": "gelu_tanh_mul",
+  "dtype": "bfloat16",
+  "layout": "contiguous_row_major",
+  "semantics": "bf16(bf16(gelu_tanh_fp32(gate)) * fp32(up))",
+  "widths": [6144, 12288],
+  "rows": [1, 2, 7, 16, 31, 32, 33, 127, 128, 129, 512, 4096],
+  "qualification": "cpu_contract_only",
+  "numerical_policy": "pending_gpu_calibration",
+  "excluded_paths": ["producer_layers_linear_gelu_rows_ge_8192"],
+  "gpu": "B200"
+}
