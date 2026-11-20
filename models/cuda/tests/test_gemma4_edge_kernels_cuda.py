@@ -11,6 +11,7 @@ from torch.nn import functional as F
 
 from resin_models_cuda.gemma4.edge_kernels import (
     gate_up_gelu_m1,
+    kv_append,
     gelu_tanh_mul,
     linear_m1,
     paged_decode_q1,
@@ -769,3 +770,51 @@ def test_paged_decode_rejects_unsupported_inputs():
         paged_decode_q1(query, keys, values, indptr.long(), indices, last, window_left=-1, page_size=64)
     with pytest.raises(ValueError):
         paged_decode_q1(query[..., :128].contiguous(), keys[..., :128], values[..., :128], indptr, indices, last, window_left=-1, page_size=64)
+
+
+@pytest.mark.parametrize("width,tokens", [(256, 1), (256, 77), (512, 1024)])
+@torch.inference_mode()
+def test_kv_append_matches_indexed_assignment_on_permuted_arena_and_replays(width, tokens):
+    pages, page = 40, 64
+    storage = torch.randn(pages, 2, 6, page, 1, width, dtype=torch.bfloat16, device="cuda")
+    view = storage.permute(1, 2, 0, 3, 4, 5)  # same layout as the runner's arena
+    expected_storage = storage.clone()
+    expected = expected_storage.permute(1, 2, 0, 3, 4, 5)
+    generator = torch.Generator(device="cuda").manual_seed(width + tokens)
+    slots = torch.randperm(pages * page, device="cuda", generator=generator)[:tokens]
+    page_ids, offsets = (slots // page), (slots % page)
+    key = torch.randn(tokens, 1, width, dtype=torch.bfloat16, device="cuda")
+    value = torch.randn_like(key)
+    wide = torch.randn(tokens, 3 * width, dtype=torch.bfloat16, device="cuda")
+    value = wide[:, width : 2 * width].reshape(tokens, 1, width)  # strided producer view
+    value.copy_(torch.randn_like(value))
+    expected[0, 2][page_ids, offsets] = key
+    expected[1, 2][page_ids, offsets] = value
+    assert kv_append(view[0, 2], view[1, 2], key, value, page_ids, offsets)
+    torch.testing.assert_close(storage, expected_storage, atol=0, rtol=0)
+
+    def operation():
+        assert kv_append(view[0, 3], view[1, 3], key, value, page_ids, offsets)
+        return view[0, 3]
+
+    graph, _ = _capture(operation)
+    key.copy_(torch.randn_like(key))
+    value.copy_(torch.randn_like(value))
+    expected[0, 3][page_ids, offsets] = key
+    expected[1, 3][page_ids, offsets] = value
+    graph.replay()
+    torch.cuda.synchronize()
+    torch.testing.assert_close(storage, expected_storage, atol=0, rtol=0)
+
+
+@torch.inference_mode()
+def test_kv_append_declines_unsupported_contracts_without_writing():
+    keys = torch.zeros(4, 64, 1, 256, dtype=torch.bfloat16, device="cuda")
+    values = torch.zeros_like(keys)
+    key = torch.ones(2, 1, 256, dtype=torch.bfloat16, device="cuda")
+    pages = torch.tensor([1, 2], device="cuda")
+    offsets = torch.tensor([3, 4], device="cuda")
+    assert not kv_append(keys, values, key.float(), key.float(), pages, offsets)
+    assert not kv_append(keys, values, key, key, pages.float(), offsets)
+    assert not kv_append(keys, values, key[:1], key, pages, offsets)
+    assert torch.count_nonzero(keys) == 0 and torch.count_nonzero(values) == 0

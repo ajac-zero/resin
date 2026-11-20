@@ -135,6 +135,8 @@ if _mode:
         _ek._M1_GATE_UP.clear()
     if _mode in ('upstream', 'fusedgelu', 'm1'):
         _ek._PAGED_DECODE.clear()
+    if _mode in ('upstream', 'fusedgelu', 'm1', 'paged'):
+        kv_append = lambda *args: False
     if _mode == 'upstream':
         _em._gelu_tanh_mul = lambda g, u: _F.gelu(g, approximate='tanh') * u
 if _os.environ.get('RESIN_DIAG_LOGITS'):

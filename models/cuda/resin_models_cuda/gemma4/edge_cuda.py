@@ -31,7 +31,11 @@ from resin_models_cuda.gemma4.edge_checkpoint import (
     DEFAULT_REVISION,
     load_edge_model,
 )
-from resin_models_cuda.gemma4.edge_kernels import linear_m1, norm_residual
+from resin_models_cuda.gemma4.edge_kernels import (
+    kv_append,
+    linear_m1,
+    norm_residual,
+)
 
 
 class _EdgeHiddenLease:
@@ -359,8 +363,16 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
                     global_wrapper,
                 )
             if key is not None:
-                keys[pages, offsets] = key.to(self._cache.dtype)
-                values[pages, offsets] = value.to(self._cache.dtype)
+                if not kv_append(
+                    keys,
+                    values,
+                    key.to(self._cache.dtype),
+                    value.to(self._cache.dtype),
+                    pages,
+                    offsets,
+                ):
+                    keys[pages, offsets] = key.to(self._cache.dtype)
+                    values[pages, offsets] = value.to(self._cache.dtype)
             attended = self._decode_attention(
                 wrapper,
                 local if layer.self_attn.layer_type == SLIDING_ATTENTION else global_,

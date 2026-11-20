@@ -669,3 +669,63 @@ def launch_paged_decode(
         SPLITS=splits,
         num_warps=4,
     )
+
+
+@triton.jit
+def _kv_append(
+    key,
+    value,
+    cache_keys,
+    cache_values,
+    pages,
+    offsets,
+    key_stride,
+    value_stride,
+    cache_key_page_stride,
+    cache_key_slot_stride,
+    cache_value_page_stride,
+    cache_value_slot_stride,
+    WIDTH: tl.constexpr,
+    BLOCK: tl.constexpr,
+):
+    token = tl.program_id(0)
+    columns = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+    valid = columns < WIDTH
+    page = tl.load(pages + token).to(tl.int64)
+    slot = tl.load(offsets + token).to(tl.int64)
+    tl.store(
+        cache_keys + page * cache_key_page_stride + slot * cache_key_slot_stride + columns,
+        tl.load(key + token * key_stride + columns, mask=valid, other=0),
+        mask=valid,
+    )
+    tl.store(
+        cache_values
+        + page * cache_value_page_stride
+        + slot * cache_value_slot_stride
+        + columns,
+        tl.load(value + token * value_stride + columns, mask=valid, other=0),
+        mask=valid,
+    )
+
+
+def launch_kv_append(key, value, cache_keys, cache_values, pages, offsets):
+    tokens, heads, width = key.shape
+    flat = heads * width
+    block = min(triton.next_power_of_2(flat), 512)
+    cast(Any, _kv_append)[(tokens, triton.cdiv(flat, block))](
+        key,
+        value,
+        cache_keys,
+        cache_values,
+        pages,
+        offsets,
+        key.stride(0),
+        value.stride(0),
+        cache_keys.stride(0),
+        cache_keys.stride(1),
+        cache_values.stride(0),
+        cache_values.stride(1),
+        WIDTH=flat,
+        BLOCK=block,
+        num_warps=4,
+    )

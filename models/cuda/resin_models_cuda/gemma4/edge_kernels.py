@@ -240,6 +240,55 @@ def paged_decode_q1(
     return output
 
 
+def kv_append(
+    cache_keys: Tensor,
+    cache_values: Tensor,
+    key: Tensor,
+    value: Tensor,
+    pages: Tensor,
+    offsets: Tensor,
+) -> bool:
+    """Write K and V rows into paged NHD caches with one launch.
+
+    Equivalent to ``cache_keys[pages, offsets] = key`` and the same for values when
+    the destinations are distinct. Returns False (writing nothing) outside the
+    supported contract so the caller can use indexed assignment instead.
+    """
+    if (
+        not key.is_cuda
+        or key.ndim != 3
+        or value.shape != key.shape
+        or key.dtype != cache_keys.dtype
+        or value.dtype != cache_values.dtype
+        or cache_keys.ndim != 4
+        or cache_values.shape != cache_keys.shape
+        or cache_keys.device != key.device
+        or cache_values.device != key.device
+        or cache_keys.shape[2:] != key.shape[1:]
+        or key.stride(2) != 1
+        or key.stride(1) != key.shape[2]
+        or value.stride(2) != 1
+        or value.stride(1) != value.shape[2]
+        or cache_keys.stride(3) != 1
+        or cache_values.stride(3) != 1
+        or cache_keys.stride(2) != key.shape[2]
+        or cache_values.stride(2) != key.shape[2]
+        or pages.dtype not in (torch.int32, torch.int64)
+        or offsets.dtype not in (torch.int32, torch.int64)
+        or pages.shape != (key.shape[0],)
+        or offsets.shape != pages.shape
+        or not pages.is_cuda
+        or not offsets.is_cuda
+        or not pages.is_contiguous()
+        or not offsets.is_contiguous()
+    ):
+        return False
+    from resin_models_cuda.gemma4.edge_kernels_triton import launch_kv_append
+
+    launch_kv_append(key, value, cache_keys, cache_values, pages, offsets)
+    return True
+
+
 def gelu_tanh_mul(gate: Tensor, up: Tensor) -> Tensor:
     """Fuse GELU and multiply while retaining the BF16 GELU output round."""
     if (
@@ -437,6 +486,7 @@ __all__ = [
     "linear_m1",
     "gate_up_gelu_m1",
     "paged_decode_q1",
+    "kv_append",
     "strided_qk_rmsnorm_rope",
     "norm_residual",
     "UniformCausalPagedVerifyWrapper",

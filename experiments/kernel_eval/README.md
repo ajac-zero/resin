@@ -561,3 +561,40 @@ over vLLM at 1024 is small enough that method differences could erase it. vLLM r
 here were default-configured; its speculative-decoding (MTP) mode and tuning flags
 were not explored, and TTFT, batch>1, throughput and SGLang were not compared in this
 step.
+
+## Fused KV append, SGLang baseline, and current standing
+
+**Fused KV append (fork):** the profile showed 30 PyTorch `index_put` launches per token
+(~116 us) for cache writes. `kv_append` writes K and V rows with one Triton launch per
+producer layer (same strided permuted arena views; falls back to indexed assignment
+outside its contract and writes nothing in that case). 4 new B200 tests pass (arena
+layout, strided producer views, 1/77/1024 tokens, graph replay with changed inputs,
+declines unsupported dtypes/shapes without writing; ap-sGZUvlt3r5XDkwaL9THt7o).
+Interleaved A/B (`b200-resin-ab-kvappend.json`, ap-tNiqrqaSsk7paF7yTLzo95; two rounds
+each, fresh engine per run): ctx256 2.521 -> **2.436 ms (-3.35%)**, ctx1024 2.832 ->
+**2.749 ms (-2.93%)**; rounds agree to <0.01 ms. All 54 tokens still equal the
+upstream path's. The unchanged "paged" configuration reproduced across separate
+containers within 0.2% (2.521/2.832 vs 2.516/2.826).
+
+**All four changes vs upstream path (decode ms/token, batch 1, real prompts):**
+ctx256 3.078 -> 2.436 (**-20.9%**), ctx1024 3.495 -> 2.749 (**-21.3%**). The upstream
+numbers come from the earlier A/B container, the final ones from this one.
+
+**SGLang 0.5.23 baseline** (same harness/prompts/checkpoint as vLLM; `b200-sglang-baseline.json`,
+ap-IDUKMNYXdefyRpYs1z3pa0): 2.73-2.81 ms/token over ctx 128-1024. Greedy tokens equal
+Resin's on 5/6 prompts; ctx 384 first differs at token 20 (BF16 near-tie suspected; the
+logit margin was not inspected).
+Standing (approximate: baselines are end-to-end generate-time differencing including
+host overhead, Resin is its own harness step interval):
+
+| ctx | Resin upstream | Resin now | SGLang 0.5.23 | vLLM 0.34 |
+|---|---:|---:|---:|---:|
+| 256 | 3.078 | **2.436** | 2.737 | 2.849 |
+| 1024 | 3.495 | **2.749** | 2.813 | 2.949 |
+
+At ctx256 Resin is ~11% faster than SGLang and ~14% faster than vLLM; at ctx1024 only
+~2% faster than SGLang and ~7% than vLLM, small enough that the method difference
+could erase it. Upstream Resin was 12-24% SLOWER than both. Not covered: TTFT,
+batch>1 and throughput, speculative decoding (MTP) for any engine, SGLang/vLLM
+tuning flags, other hardware, long contexts (global layers fall back to FlashInfer
+above 1K tokens of graph capacity), or end-to-end serving (HTTP/tokenization).
