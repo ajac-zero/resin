@@ -1,0 +1,38 @@
+{
+  "status": "numerical_probe_only",
+  "gpu": "NVIDIA B200",
+  "results": [
+    {
+      "elements": 1,
+      "mismatch_count": 0,
+      "max_abs_error": 0.0,
+      "triton_mismatch_count": 0
+    },
+    {
+      "elements": 7,
+      "mismatch_count": 0,
+      "max_abs_error": 0.0,
+      "triton_mismatch_count": 0
+    },
+    {
+      "elements": 257,
+      "mismatch_count": 0,
+      "max_abs_error": 0.0,
+      "triton_mismatch_count": 0
+    },
+    {
+      "elements": 6144,
+      "mismatch_count": 0,
+      "max_abs_error": 0.0,
+      "triton_mismatch_count": 0
+    },
+    {
+      "elements": 12288,
+      "mismatch_count": 0,
+      "max_abs_error": 0.0,
+      "triton_mismatch_count": 0
+    }
+  ],
+  "gpu_qualified": false,
+  "performance": null
+}

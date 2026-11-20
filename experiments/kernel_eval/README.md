@@ -103,3 +103,30 @@ plain str fixed it without installing PyTorch locally. Both ephemeral apps were
 confirmed stopped with zero tasks. Billing summary is workspace-wide and delayed;
 it is not an exact per-run cost receipt. No model weights or persistent volumes
 were created. $5 total qualification authorization remains the phase limit.
+
+## Standalone CUDA Rust numerical milestone
+
+`rust/` is an isolated Cargo workspace using locked cuTile 0.4.0 and half BF16.
+The actual Rust GPU kernel loads/stores BF16, computes tanh-GELU in FP32 and
+explicitly rounds its intermediate to BF16 before multiplying. Modal builds it
+on CPU and executes it on B200. Host JSON transport is for correctness only:
+it includes copies and process startup and MUST NOT be used for kernel timing.
+
+`results/b200-rust-numerics.json` records zero mismatches against BOTH PyTorch
+and the existing Resin Triton kernel across 1, 7, 257, 6144 and 12288 elements
+(18,697 total). These are deterministic finite random probes, not exhaustive
+coverage, sanitizer qualification, graph-replay qualification or full model parity.
+
+Successful run: https://modal.com/apps/ajac-zero/main/ap-pt9ffobVci4SAgIEVErGjk
+Build troubleshooting: explicit tile constants required instead of scalar
+arithmetic; remote module import must not evaluate local ROOT.parents paths.
+Startup failures were observed to retry despite function retries=0, so an outer
+wall timeout and explicit app stop remain necessary. All phase apps confirmed
+stopped with zero tasks after this milestone. Delayed workspace metered ephemeral
+cost grew from $2.18 before Rust work to $2.23 on the final check; this is NOT a
+complete settled per-run charge. No performance speedup claimed yet.
+
+Next gate: persistent owned buffers + CUDA event/graph timing inside Rust, paired
+with PyTorch/Triton timing in the same B200 run; changed-input replay, nonfinite
+and tail probes, Compute Sanitizer. The Rust kernel is not wired into Resin's
+runner and is not agent-editable code executing under an immutable trusted judge.
