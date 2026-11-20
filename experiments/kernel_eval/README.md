@@ -154,3 +154,25 @@ Run: https://modal.com/apps/ajac-zero/main/ap-RKTpZlwSkStsyVkAzya24t
 All phase apps confirmed stopped with zero tasks. Delayed workspace ephemeral
 meter is $2.26 (previous $2.23); exact phase charges remain unsettled. Existing
 $5 total phase authorization applies. No production integration or main merge.
+
+## Expanded shapes and changed-input replay
+
+`results/b200-expanded-replay.json` extends probes to 43,008, 202,752, 405,504
+and 792,576 elements. After timing, an independent GPU kernel updates the ORIGINAL
+gate allocation with BF16(gate+0.5); replay of the SAME captured GELU graph matches
+a freshly computed PyTorch reference. All nine cases have zero initial mismatch
+against both comparators and zero changed-input replay mismatch. This proves the
+probe consumes changed device inputs rather than assuming graph capture freezes
+values. It does not test arbitrary new allocations or concurrent stream ownership.
+
+The broader matrix rejects the universal-speedup hypothesis: median Triton/Rust
+us per call were 1.954/1.770 at 202752, 2.084/2.096 at 405504 and 2.384/3.000 at
+792576. The largest case is ~26% slower in Rust. Preserve these losses. Shape-aware
+selection may be useful; do not replace Triton globally. These remain fixed-order,
+separate-context preliminary measurements, not statistically controlled results.
+
+Run: https://modal.com/apps/ajac-zero/main/ap-jnUSJibre4c5zqwllB9rxq
+Rust build exposed a useful ownership constraint: Tensor::to_host_vec consumes
+its Tensor. Output is now Arc-owned for multiple host reads around replay. Two
+failed build attempts are retained in local audit logs; they allocated no GPU
+function. Delayed workspace compute meter reached $2.35, not a settled phase bill.

@@ -21,6 +21,13 @@ mod kernels {
         let result: Tile<bf16, {[BLOCK]}> = convert_tile(rounded*y);
         out.store(result);
     }
+    #[cutile::entry()]
+    pub fn change<const BLOCK: i32>(g: &mut Tensor<bf16, {[BLOCK]}>) {
+        let x: Tile<f32, {[BLOCK]}> = convert_tile(g.load());
+        let changed: Tile<bf16, {[BLOCK]}> = convert_tile(x + constant(0.5f32, shape![BLOCK]));
+        g.store(changed);
+    }
+
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = Device::new(0)?;
@@ -35,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Result<_,_>>()?;
         if g.is_empty() || g.len()!=u.len() || g.len()>1048576 { return Err("invalid lengths".into()); }
         let n = g.len();
-        let g = api::copy_host_vec_to_device(&Arc::new(g)).sync_on(&stream)?;
+        let mut g = api::copy_host_vec_to_device(&Arc::new(g)).sync_on(&stream)?;
         let u = api::copy_host_vec_to_device(&Arc::new(u)).sync_on(&stream)?;
         let mut out = api::zeros::<bf16>(&[n]).sync_on(&stream)?;
         kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
@@ -60,9 +67,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             end.synchronize()?;
             timings.push(start.elapsed_time(&end)? as f64 * 1000.0 / 100.0);
         }
-        let host = out.to_host_vec().sync_on(&stream)?;
+        let out = Arc::new(out);
+        let host = (&out).to_host_vec().sync_on(&stream)?;
         let values: Vec<f32> = host.iter().map(|x| x.to_f32()).collect();
-        println!("{}", serde_json::json!({"output": values, "graph_us_per_call": timings}));
+        kernels::change((&mut g).partition([256])).generics(vec!["256".into()]).sync_on(&stream)?;
+        graph.launch().sync_on(&stream)?;
+        let changed = (&out).to_host_vec().sync_on(&stream)?;
+        let changed: Vec<f32> = changed.iter().map(|x| x.to_f32()).collect();
+        println!("{}", serde_json::json!({"output": values, "changed_output": changed, "graph_us_per_call": timings}));
     }
     Ok(())
 }

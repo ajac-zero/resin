@@ -24,7 +24,7 @@ def qualify():
     spec.loader.exec_module(comparator)
     torch.manual_seed(719)
     reports=[]
-    for n in (1, 7, 257, 6144, 12288):
+    for n in (1, 7, 257, 6144, 12288, 43008, 202752, 405504, 792576):
         g=torch.randn(n,dtype=torch.bfloat16,device='cuda')
         u=torch.randn_like(g)
         request=json.dumps({'gate': g.tolist(), 'up': u.tolist()})+'\n'
@@ -38,6 +38,8 @@ def qualify():
         tri=torch.empty_like(g)
         comparator.launch_gelu_tanh_mul(g,u,tri)
         torch.cuda.synchronize()
+        changed=torch.tensor(rust_report['changed_output'],dtype=torch.bfloat16,device='cuda')
+        changed_ref=F.gelu((g.float()+0.5).bfloat16(), approximate='tanh')*u
         error=(out.float()-ref.float()).abs()
         timings={}
         for label, fn in [('pytorch', lambda: F.gelu(g, approximate='tanh')*u),
@@ -58,7 +60,8 @@ def qualify():
         timings['rust']=rust_report['graph_us_per_call']
         reports.append({'elements':n,'mismatch_count':(out!=ref).sum().item(),
                         'max_abs_error':error.max().item(),
-                        'triton_mismatch_count':(out!=tri).sum().item(), 'graph_us_per_call':timings})
+                        'triton_mismatch_count':(out!=tri).sum().item(),
+                        'changed_replay_mismatch_count':(changed!=changed_ref).sum().item(), 'graph_us_per_call':timings})
     import shutil
     sanitizer={'status':'unavailable'}
     if shutil.which('compute-sanitizer'):
@@ -69,7 +72,7 @@ def qualify():
         sanitizer={'status':'passed' if checked.returncode==0 else 'failed',
                    'returncode':checked.returncode,'stdout':checked.stdout[-2000:],
                    'stderr':checked.stderr[-4000:]}
-    return {'sanitizer':sanitizer,'status':'numerical_probe_only' , 'gpu':torch.cuda.get_device_name(),
+    return {'numerical_gate_passed': all(r['mismatch_count']==0 and r['triton_mismatch_count']==0 and r['changed_replay_mismatch_count']==0 for r in reports), 'sanitizer':sanitizer,'status':'numerical_probe_only' , 'gpu':torch.cuda.get_device_name(),
             'results':reports,'gpu_qualified':False, 'performance':None}
 
 @app.local_entrypoint()
