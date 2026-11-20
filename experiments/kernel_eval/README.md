@@ -28,3 +28,16 @@ not isolation for malicious native code. Final hidden tests and trusted evaluato
 must run outside agent-writable state; process isolation alone is not a sandbox.
 No hidden fixtures or GPU measurements exist yet. Manifest validation currently
 covers schema version, operation, dtype and positive shapes, not full JSON Schema.
+
+## Scalar numerical harness
+
+`numerics.py` adds nearest-even binary32→BF16 conversion and a scalar tanh-GELU
+specification with explicit intermediate BF16 rounding. Python tanh/arithmetic
+are not the CUDA/PyTorch implementation: exact comparisons here test the harness,
+not GPU equivalence. NaNs match by class; signed zeros compare equivalent.
+
+Unit tests now reject zero outputs, wrong activation, dropped/unwritten tails,
+skipped intermediate rounding, mutated inputs and stale output on changed-input
+replay. Fixtures are deterministic/public; these are not held-out security tests.
+The in-process checker catches Python exceptions but cannot stop hangs, native
+crashes or malicious code. Subprocess execution limits remain future work.
