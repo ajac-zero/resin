@@ -23,6 +23,28 @@ if TYPE_CHECKING:
     from resin.models.gemma4.edge_config import Gemma4EdgeConfig
 
 
+def _gelu_tanh_mul(gate: Tensor, up: Tensor) -> Tensor:
+    """``gelu(gate, tanh) * up`` with one kernel when its contract holds.
+
+    The fused kernel keeps Gemma's BF16 rounding of the GELU output before the
+    multiply, matching the eager expression bit for bit. Non-CUDA, non-BF16,
+    shape-mismatched or non-contiguous inputs use the original eager expression.
+    """
+    if (
+        gate.is_cuda
+        and gate.dtype == torch.bfloat16
+        and up.dtype == gate.dtype
+        and up.device == gate.device
+        and gate.shape == up.shape
+        and gate.is_contiguous()
+        and up.is_contiguous()
+    ):
+        from resin_models_cuda.gemma4.edge_kernels import gelu_tanh_mul
+
+        return gelu_tanh_mul(gate, up)
+    return F.gelu(gate, approximate="tanh") * up
+
+
 class EdgeScaledEmbedding(nn.Embedding):
     def __init__(
         self, count: int, width: int, padding_idx: int, *, scale: float
@@ -213,9 +235,10 @@ class Gemma4EdgeMLP(nn.Module):
                 self.gate_proj.weight,
                 zero_bias=self.gelu_zero_bias,
             ).reshape(*hidden.shape[:-1], self.intermediate_size)
-        else:
-            gate = F.gelu(self.gate_proj(hidden), approximate="tanh")
-        return self.down_proj(gate * self.up_proj(hidden))
+            return self.down_proj(gate * self.up_proj(hidden))
+        return self.down_proj(
+            _gelu_tanh_mul(self.gate_proj(hidden), self.up_proj(hidden))
+        )
 
 
 class Gemma4EdgeDecoderLayer(nn.Module):
@@ -263,8 +286,9 @@ class Gemma4EdgeDecoderLayer(nn.Module):
                 eps=self.post_feedforward_layernorm.eps,
             )
             residual = hidden
-            gate = F.gelu(self.per_layer_input_gate(hidden), approximate="tanh")
-            hidden = self.per_layer_projection(gate * per_layer_input)
+            hidden = self.per_layer_projection(
+                _gelu_tanh_mul(self.per_layer_input_gate(hidden), per_layer_input)
+            )
             return norm_residual(
                 hidden,
                 self.post_per_layer_input_norm.weight,

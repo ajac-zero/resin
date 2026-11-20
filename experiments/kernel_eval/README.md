@@ -398,3 +398,51 @@ stopped explicitly; (2) the source tree shadowed the installed package because
 `scripts/bench.py` prepends its repo root, so the image now keeps only `deploy/`
 and `scripts/` in `/opt/aux` and deletes the source tree; (3) the draft-free decode
 failure fixed below. No persistent volumes or servers; all apps stopped, zero tasks.
+
+## Correction and first in-engine gain: wire the fused GELU*up kernel
+
+**Correction to the earlier activation-tuning conclusion.** A profile of Resin's real
+draft-free B200 decode (`modal_resin_baseline.py --trace`, results
+`b200-resin-decode-trace.json`, run ap-jQQkgL7DOWs6QH2BNca6Bv) shows that in this
+fork revision the E2B forward never called `gelu_tanh_mul`: both the MLP and the
+per-layer-input gate ran unfused `F.gelu(...) * ...` (70 GELU + 70 multiply kernels
+per token, ~250 us of profiled kernel time). The Triton kernel was exported and
+unit-tested but unused. My earlier "~5.3 us/step" estimate compared Rust to Triton
+and therefore understated the opportunity: the relevant baseline is the unfused
+eager path that actually ran. (The standalone Rust/Triton kernel measurements
+themselves stand; the engine-level inference from them was wrong.)
+
+**Change (fork, `edge_model.py`):** a guarded `_gelu_tanh_mul` helper uses the
+existing fused Triton kernel for the MLP and PLE gate when inputs are matching
+contiguous BF16 CUDA tensors, and falls back to the original eager expression
+otherwise. The producer-layer fused linear+GELU path (>= 8192 rows) is unchanged.
+The kernel retains Gemma's BF16 rounding of the GELU output (my B200 domain probe
+found zero exact mismatches versus PyTorch over all 65,536 BF16 gate encodings
+and eight up patterns). CPU model/completion unit tests: 27 passed, 5 GPU-only
+skipped (ap-w4V3bdqey4dsIgWbCp4fAK).
+
+**Whole-engine result (same overrides, batch 1, 256-token context, draft 0):**
+- Decode median **2.961 -> 2.886 ms/token (-2.5%, ~75 us)**; every one of the 16
+  measured steps is faster than every baseline step (range 2.876-2.900 vs
+  2.955-2.970 ms). Kernels per token 795 -> 725 (exactly 70 fewer); the fused kernel
+  costs 104.6 us/token in the profile versus ~250 us for the 140 eager kernels.
+- The first 22 greedy generated token IDs are identical to the unfused baseline
+  (the traced run generated 25; compared on the common prefix). That is weak
+  end-to-end evidence; the stronger correctness evidence is the exact kernel probe.
+- Prefill unchanged within noise (8.085 -> 8.31 ms, n=3).
+- Single run each; baseline and fused sweeps were not interleaved. Profile times
+  differ from unprofiled wall time (profiled kernel sum ~3.05 ms vs 2.886 ms wall).
+  Saved kernel time (~146 us) exceeds saved wall time (~75 us): removed kernels
+  were partly hidden by launch gaps. Not a statistically controlled result.
+
+**Where the remaining decode time goes** (fused-run profile, per token, 725 kernels,
+GPU ~90% busy over the traced span; percentages are of ~3.05 ms profiled kernel time):
+- GEMMs (nvjet/cublasLt incl. split-K reductions): ~1.66 ms (54%)
+- Attention (FlashInfer): ~0.54 ms (18%) - ~35 launches at ~15 us each, for a 256-token context
+- Norm/residual/RoPE (Quack RMSNorm, `_norm_residual`, QK norm+RoPE): ~0.51 ms (17%);
+  `_norm_residual` alone is 105 launches
+- Fused GELU*up 0.10 ms; KV `index_put` and other eager ops ~0.16 ms; copies 0.04 ms
+Bandwidth arithmetic (not a measurement): the GEMM bucket alone is ~2.5x the
+~0.65 ms weight-read floor for ~4.4 GB at ~7 TB/s, so M=1 GEMM efficiency and
+split-K behavior are the largest candidate; attention and the many small
+norm/residual launches are the next.
