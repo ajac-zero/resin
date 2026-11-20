@@ -17,8 +17,8 @@ implemented Rust ABI. The host, not the candidate, will allocate/fill fresh buff
 check results and time execution. CPU contract validation earns no performance
 score and cannot produce a GPU-qualified report.
 
-Next: independent CPU numerical oracle with explicit BF16 rounding, adversarial
-fixtures/mutants, subprocess failure handling and bounded memory. Then qualify
+CPU scalar specification, mutation tests and bounded fixture subprocesses are now
+implemented. Next qualify
 PyTorch/Triton/Rust on B200, calibrate and freeze numerical thresholds, and implement
 actual GPU adapter. Do not equate an idealized scalar tanh formula with exact
 PyTorch GPU results before calibration.
@@ -40,7 +40,7 @@ Unit tests now reject zero outputs, wrong activation, dropped/unwritten tails,
 skipped intermediate rounding, mutated inputs and stale output on changed-input
 replay. Fixtures are deterministic/public; these are not held-out security tests.
 The in-process checker catches Python exceptions but cannot stop hangs, native
-crashes or malicious code. Subprocess execution limits remain future work.
+crashes or malicious code. Bounded subprocess execution is now available below.
 
 ## Bounded local commands
 
@@ -52,6 +52,37 @@ GPU processes need different memory limits; this profile must not wrap CUDA as-i
 
 This does NOT restrict network, credentials or filesystem access, and descendants
 that deliberately escape the process group are not contained. Run only our own
-fixtures here. No arbitrary agent-produced native code on Pim Computer. Candidate
-protocol wiring, result validation across the subprocess boundary and a genuine
-remote isolation boundary are still required before untrusted execution.
+fixtures here. No arbitrary agent-produced native code on Pim Computer. The built-in fixture JSON protocol is now wired below; a genuine remote isolation
+boundary is still required before untrusted execution.
+
+
+## Integrated local milestone
+
+```
+python3 experiments/kernel_eval/evaluate.py reference
+python3 experiments/kernel_eval/evaluate.py skip_round  # fails with exit 1
+```
+
+The parent generates six small deterministic cases, runs the built-in worker in
+a bounded subprocess and independently checks its JSON output. Reports include
+manifest, worker, evaluator and oracle hashes. Known failure fixtures exercise
+incorrect results, hangs, crashes and malformed responses. Only our own fixtures
+can execute locally. Input immutability is tested in-process; returned JSON alone
+cannot prove a worker did not mutate its private inputs. This is an integrated
+harness self-test, not a complete arbitrary-candidate evaluator.
+
+## Prepared Modal calibration (not executed)
+
+`modal_probe.py` defines one B200 container, no retries, a 180-second function
+timeout and explicit CLI spending acknowledgment. Definition import was checked
+using the installed Modal 1.5.5 tool environment; this does not validate remote
+image availability, package installation or CUDA execution. The image uses the
+CUDA tag from Resin's deployment image and pinned PyTorch 2.13.0, not digest locks.
+
+After separate spending approval, the pilot reports sampled scalar-vs-PyTorch
+errors and CUDA-event baseline timings for six shapes. It does not download model
+weights or load arbitrary candidates. A function timeout is NOT a dollar budget
+or a bound on image build costs. Establish account budget/total run limit before
+launch. Rust kernel implementation, existing Triton comparison, sanitizer and
+changed-input CUDA graph replay remain subsequent GPU gates. No speedup or GPU
+qualification may be inferred from this scaffold.
