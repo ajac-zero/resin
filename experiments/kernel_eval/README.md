@@ -41,3 +41,17 @@ skipped intermediate rounding, mutated inputs and stale output on changed-input
 replay. Fixtures are deterministic/public; these are not held-out security tests.
 The in-process checker catches Python exceptions but cannot stop hangs, native
 crashes or malicious code. Subprocess execution limits remain future work.
+
+## Bounded local commands
+
+`process.run` now supplies Linux wall/CPU time, address-space and per-output-file
+size limits, disables core dumps and kills the child's process group on exit.
+Tests exercise success, abort, timeout, output flooding and allocation failure.
+It is a single-threaded harness utility (`preexec_fn`), not a general service API.
+GPU processes need different memory limits; this profile must not wrap CUDA as-is.
+
+This does NOT restrict network, credentials or filesystem access, and descendants
+that deliberately escape the process group are not contained. Run only our own
+fixtures here. No arbitrary agent-produced native code on Pim Computer. Candidate
+protocol wiring, result validation across the subprocess boundary and a genuine
+remote isolation boundary are still required before untrusted execution.
