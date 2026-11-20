@@ -1,0 +1,600 @@
+{
+  "graph_decode_probe": {
+    "status": "teacher_forced_static_cache_graph_probe",
+    "measurements": [
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 9.190208435058594,
+          "synchronized_wall_ms": 9.243354999998843
+        },
+        "eager": {
+          "cuda_stream_ms": 33.68150329589844,
+          "synchronized_wall_ms": 33.71692400000015
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 34.308319091796875,
+          "synchronized_wall_ms": 34.347271999997986
+        },
+        "graph": {
+          "cuda_stream_ms": 7.946911811828613,
+          "synchronized_wall_ms": 7.977525000001151
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.904032230377197,
+          "synchronized_wall_ms": 7.939740000001194
+        },
+        "eager": {
+          "cuda_stream_ms": 35.40278244018555,
+          "synchronized_wall_ms": 35.43499299999908
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 33.500640869140625,
+          "synchronized_wall_ms": 33.53264000000067
+        },
+        "graph": {
+          "cuda_stream_ms": 7.9435200691223145,
+          "synchronized_wall_ms": 7.9736849999996195
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.913887977600098,
+          "synchronized_wall_ms": 7.947901000001423
+        },
+        "eager": {
+          "cuda_stream_ms": 33.63075256347656,
+          "synchronized_wall_ms": 33.66671099999863
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 33.33046340942383,
+          "synchronized_wall_ms": 33.36325600000123
+        },
+        "graph": {
+          "cuda_stream_ms": 7.904543876647949,
+          "synchronized_wall_ms": 7.933293000000674
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.904416084289551,
+          "synchronized_wall_ms": 7.940647000001633
+        },
+        "eager": {
+          "cuda_stream_ms": 33.43532943725586,
+          "synchronized_wall_ms": 33.467020999999875
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 33.343936920166016,
+          "synchronized_wall_ms": 33.37597299999828
+        },
+        "graph": {
+          "cuda_stream_ms": 7.913536071777344,
+          "synchronized_wall_ms": 7.941226999999884
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.894207954406738,
+          "synchronized_wall_ms": 7.928641999999542
+        },
+        "eager": {
+          "cuda_stream_ms": 33.12966537475586,
+          "synchronized_wall_ms": 33.15944599999909
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 33.96736145019531,
+          "synchronized_wall_ms": 33.99879299999853
+        },
+        "graph": {
+          "cuda_stream_ms": 7.916895866394043,
+          "synchronized_wall_ms": 7.946596000000028
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.900032043457031,
+          "synchronized_wall_ms": 7.935185000000899
+        },
+        "eager": {
+          "cuda_stream_ms": 33.43824005126953,
+          "synchronized_wall_ms": 33.47613799999749
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 33.680545806884766,
+          "synchronized_wall_ms": 33.71217499999801
+        },
+        "graph": {
+          "cuda_stream_ms": 7.90831995010376,
+          "synchronized_wall_ms": 7.938350999999955
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.90774393081665,
+          "synchronized_wall_ms": 7.944662999999963
+        },
+        "eager": {
+          "cuda_stream_ms": 33.9450569152832,
+          "synchronized_wall_ms": 33.97526399999862
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 32.742305755615234,
+          "synchronized_wall_ms": 32.784860999999665
+        },
+        "graph": {
+          "cuda_stream_ms": 7.900256156921387,
+          "synchronized_wall_ms": 7.93024000000031
+        }
+      },
+      {
+        "order": [
+          "graph",
+          "eager"
+        ],
+        "graph": {
+          "cuda_stream_ms": 7.893248081207275,
+          "synchronized_wall_ms": 7.92670299999898
+        },
+        "eager": {
+          "cuda_stream_ms": 32.652671813964844,
+          "synchronized_wall_ms": 32.69497799999854
+        }
+      },
+      {
+        "order": [
+          "eager",
+          "graph"
+        ],
+        "eager": {
+          "cuda_stream_ms": 32.85763168334961,
+          "synchronized_wall_ms": 32.88874000000064
+        },
+        "graph": {
+          "cuda_stream_ms": 7.894464015960693,
+          "synchronized_wall_ms": 7.922896000000179
+        }
+      }
+    ],
+    "checks": [
+      {
+        "step": 0,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 1,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 2,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 3,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 4,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 5,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 6,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 7,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 8,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 9,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 10,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 11,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 12,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 13,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 14,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      },
+      {
+        "step": 15,
+        "max_abs_logit_error": 0.0,
+        "argmax_equal": true,
+        "finite": true
+      }
+    ],
+    "passed": true,
+    "limitations": "Alternating eager/graph measurement order, same static-cache path, independent static caches, explicit position/mask buffers, 16 changing teacher-forced token inputs, short context only. Not serving or dynamic-cache equivalence."
+  },
+  "status": "hf_reference_only",
+  "model": "google/gemma-4-E2B-it",
+  "revision": "3e22461f65e89153144f8adb70e3b8c2cc9845a7",
+  "gpu": "NVIDIA B200",
+  "torch": "2.13.0+cu130",
+  "transformers": "5.14.1",
+  "attention": "sdpa",
+  "load_seconds": 6.95240022,
+  "peak_allocated_bytes": 10413630976,
+  "results": [
+    {
+      "phase": "prefill",
+      "batch": 1,
+      "tokens": 256,
+      "measurements": [
+        {
+          "cuda_stream_ms": 30.14246368408203,
+          "synchronized_wall_ms": 30.193742999999884
+        },
+        {
+          "cuda_stream_ms": 30.09008026123047,
+          "synchronized_wall_ms": 30.11500100000042
+        },
+        {
+          "cuda_stream_ms": 29.710079193115234,
+          "synchronized_wall_ms": 29.73841600000071
+        },
+        {
+          "cuda_stream_ms": 29.98521614074707,
+          "synchronized_wall_ms": 30.01082399999966
+        },
+        {
+          "cuda_stream_ms": 30.16748809814453,
+          "synchronized_wall_ms": 30.191566000000947
+        }
+      ],
+      "logits_finite": true
+    },
+    {
+      "phase": "prefill",
+      "batch": 1,
+      "tokens": 1024,
+      "measurements": [
+        {
+          "cuda_stream_ms": 30.62131118774414,
+          "synchronized_wall_ms": 30.66318800000012
+        },
+        {
+          "cuda_stream_ms": 32.30080032348633,
+          "synchronized_wall_ms": 32.32632299999949
+        },
+        {
+          "cuda_stream_ms": 30.793920516967773,
+          "synchronized_wall_ms": 30.830374999998966
+        },
+        {
+          "cuda_stream_ms": 31.01696014404297,
+          "synchronized_wall_ms": 31.042300999999384
+        },
+        {
+          "cuda_stream_ms": 30.33500862121582,
+          "synchronized_wall_ms": 30.360012000000935
+        }
+      ],
+      "logits_finite": true
+    },
+    {
+      "phase": "decode",
+      "batch": 1,
+      "initial_context": 256,
+      "warmup_steps": 4,
+      "measurements": [
+        {
+          "cuda_stream_ms": 25.765823364257812,
+          "synchronized_wall_ms": 25.79032999999953
+        },
+        {
+          "cuda_stream_ms": 25.508159637451172,
+          "synchronized_wall_ms": 25.535040000001175
+        },
+        {
+          "cuda_stream_ms": 25.653440475463867,
+          "synchronized_wall_ms": 25.677852000001167
+        },
+        {
+          "cuda_stream_ms": 30.61644744873047,
+          "synchronized_wall_ms": 30.646641000000585
+        },
+        {
+          "cuda_stream_ms": 29.612895965576172,
+          "synchronized_wall_ms": 29.636664999998175
+        },
+        {
+          "cuda_stream_ms": 28.63488006591797,
+          "synchronized_wall_ms": 28.658418999999213
+        },
+        {
+          "cuda_stream_ms": 28.53219223022461,
+          "synchronized_wall_ms": 28.556596999997907
+        },
+        {
+          "cuda_stream_ms": 28.78348731994629,
+          "synchronized_wall_ms": 28.806871999996986
+        },
+        {
+          "cuda_stream_ms": 28.344703674316406,
+          "synchronized_wall_ms": 28.36914599999929
+        },
+        {
+          "cuda_stream_ms": 28.766271591186523,
+          "synchronized_wall_ms": 28.79068000000018
+        },
+        {
+          "cuda_stream_ms": 28.2271671295166,
+          "synchronized_wall_ms": 28.25162599999942
+        },
+        {
+          "cuda_stream_ms": 28.406143188476562,
+          "synchronized_wall_ms": 28.4307290000001
+        },
+        {
+          "cuda_stream_ms": 28.35158348083496,
+          "synchronized_wall_ms": 28.376528999999096
+        },
+        {
+          "cuda_stream_ms": 28.424991607666016,
+          "synchronized_wall_ms": 28.449467000001505
+        },
+        {
+          "cuda_stream_ms": 28.197280883789062,
+          "synchronized_wall_ms": 28.22238699999957
+        },
+        {
+          "cuda_stream_ms": 28.251136779785156,
+          "synchronized_wall_ms": 28.27503900000039
+        }
+      ],
+      "logits_finite": true
+    }
+  ],
+  "decode_profile_top_ops": [
+    {
+      "op": "aten::mm",
+      "self_device_us": 7431.162999999978,
+      "calls": 1108
+    },
+    {
+      "op": "aten::copy_",
+      "self_device_us": 6894.358000000584,
+      "calls": 2872
+    },
+    {
+      "op": "aten::mul",
+      "self_device_us": 4295.500999999998,
+      "calls": 2592
+    },
+    {
+      "op": "aten::pow",
+      "self_device_us": 2906.953999999523,
+      "calls": 1936
+    },
+    {
+      "op": "aten::add",
+      "self_device_us": 2313.4720000002276,
+      "calls": 1596
+    },
+    {
+      "op": "aten::mean",
+      "self_device_us": 2293.033000000291,
+      "calls": 968
+    },
+    {
+      "op": "aten::_flash_attention_forward",
+      "self_device_us": 1018.6340000001001,
+      "calls": 112
+    },
+    {
+      "op": "aten::_efficient_attention_forward",
+      "self_device_us": 906.0490000000282,
+      "calls": 28
+    },
+    {
+      "op": "aten::cat",
+      "self_device_us": 721.7069999999471,
+      "calls": 328
+    },
+    {
+      "op": "aten::gelu",
+      "self_device_us": 487.737000000212,
+      "calls": 280
+    },
+    {
+      "op": "aten::neg",
+      "self_device_us": 389.634999999932,
+      "calls": 200
+    },
+    {
+      "op": "aten::mul_",
+      "self_device_us": 330.8159999999971,
+      "calls": 140
+    },
+    {
+      "op": "aten::argmax",
+      "self_device_us": 39.456000000027416,
+      "calls": 4
+    },
+    {
+      "op": "aten::gather",
+      "self_device_us": 27.583999999989828,
+      "calls": 4
+    },
+    {
+      "op": "aten::where",
+      "self_device_us": 21.88800000000947,
+      "calls": 12
+    },
+    {
+      "op": "aten::eq",
+      "self_device_us": 19.071000000040385,
+      "calls": 12
+    },
+    {
+      "op": "aten::sin",
+      "self_device_us": 15.777000000010503,
+      "calls": 8
+    },
+    {
+      "op": "aten::cos",
+      "self_device_us": 15.52100000000246,
+      "calls": 8
+    },
+    {
+      "op": "aten::bitwise_or",
+      "self_device_us": 13.95399999999563,
+      "calls": 8
+    },
+    {
+      "op": "_native::bmm_triton_0",
+      "self_device_us": 11.966000000014446,
+      "calls": 8
+    },
+    {
+      "op": "aten::div",
+      "self_device_us": 10.334999999977299,
+      "calls": 4
+    },
+    {
+      "op": "aten::index_select",
+      "self_device_us": 10.175999999998112,
+      "calls": 8
+    },
+    {
+      "op": "cudaStreamIsCapturing",
+      "self_device_us": 8.959999999991851,
+      "calls": 36
+    },
+    {
+      "op": "aten::tanh",
+      "self_device_us": 8.735000000000582,
+      "calls": 4
+    },
+    {
+      "op": "Activity Buffer Request",
+      "self_device_us": 4.960000000027776,
+      "calls": 3
+    }
+  ],
+  "profile_total_self_device_us": 30209.154000000926,
+  "limitations": "Synthetic repeated text, batch1 only; HF eager reference, not Resin/vLLM/SGLang. Stream events include launch gaps. No SLO/goodput or quantized measurements. Profile timings separate from unprofiled timings."
+}

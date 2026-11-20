@@ -277,3 +277,58 @@ The cdylib shares the judge address space and must never be presented as hostile
 candidate isolation. Secure acceptance still requires a separately reviewed
 artifact/launcher/isolation design, with trusted expected outputs unavailable to
 candidate host code and measured timing not supplied by a writable candidate.
+
+## Pinned whole-model reference and matched CUDA-graph decode
+
+`modal_model_profile.py --approve-spend` now downloads the REAL pinned checkpoint
+in a CPU image-build step, loads BF16 Gemma4ForConditionalGeneration on one B200,
+and runs text-only whole-model inference. The public HF pinned inventory exposes
+one `model.safetensors` of 10,246,621,918 bytes (not gated); the GPU allocated peak
+in the measured reference was 10,413,630,976 bytes. No weights are added to git.
+The default Resin gemma4-e2b preset is Ampere/A100 and sets architecture 8.0;
+we did NOT silently treat it as a qualified B200 deployment. Its CUDA package
+also pins torch 2.15.0 while this independent reference uses 2.13.0. A separately
+qualified Resin B200 image is still needed.
+
+The final report is `results/b200-gemma-hf-reference.json`, run
+https://modal.com/apps/ajac-zero/main/ap-vJAVMmkjuTZEUq2DkVUyOC . It contains
+256/1024-token synthetic repeated-text prefill, greedy dynamic-cache decode,
+and a matched static-cache eager-vs-graph decode experiment. The latter has
+independent caches initialized from the SAME 256-token prefix, same static-cache
+code path and weights, alternating measurement order, explicit mutable position
+and mask buffers, and 16 changing teacher-forced token inputs. All 16 captured
+logit tensors match their eager counterparts EXACTLY (max abs error zero and
+same argmax); not merely a matching generated token string.
+
+Median static-cache eager / graph decode was 33.469 / 7.906 ms (~4.23x) on that
+run; the graph path uses unchanged HF kernels. This demonstrates that eager HF
+is a profoundly weak optimization comparator for this workload. It is NOT a
+Resin or CUDA Rust kernel win, and is NOT evidence of beating vLLM/SGLang.
+Earlier independent graph bring-up was ~8.633 ms but was compared against a
+different dynamic-cache path; that unmatched comparison is not used for the
+4.23x figure. Timing includes CUDA stream gaps; the measured wall time likewise
+includes per-step synchronization. No serving scheduler, request concurrency,
+long-context window rollover, SLO or throughput qualification is implied.
+
+Four-step eager profiler decomposition attributes ~24.6% of operator-associated
+self-device time to mm, ~22.8% to copy_, ~14.2% to mul, ~9.6% to pow. The report
+uses CPU operator self-device attribution ONLY: summing those and CUDA kernel
+rows would double count. An early profiling attempt did double count those;
+its aggregate is discarded. The observed cast/norm/elementwise overhead is a
+hypothesis for investigation, not a prediction of wins over Resin: direct source
+inspection shows Resin ALREADY has CUDA graph decode, norm/residual and norm/RoPE
+fusions (`edge_cuda.py`, `edge_kernels.py`, `edge_model.py`).
+
+**Next decision:** establish the actual B200 Resin/tuned-engine baseline and
+profile THAT, before selecting another kernel target. The activation fixture
+and this HF reference are useful qualification tools, but neither is the north
+star performance baseline. Kernel isolation remains a separate unresolved gate.
+Image loading initially failed for missing accelerate; the bounded retry adds
+accelerate==1.12.0 after the cached checkpoint layer. All runs have explicit
+function/CLI deadlines and no persistent server/volume was provisioned.
+
+Primary sources checked for this step:
+- pinned HF API inventory: https://huggingface.co/api/models/google/gemma-4-E2B-it/revision/3e22461f65e89153144f8adb70e3b8c2cc9845a7?blobs=true
+- model code: https://github.com/huggingface/transformers/blob/v5.14.1/src/transformers/models/gemma4/modeling_gemma4.py
+- cache API: https://github.com/huggingface/transformers/blob/v5.14.1/src/transformers/cache_utils.py
+- Resin files above and `deploy/models.py`, at source revision pinned in task.json.
