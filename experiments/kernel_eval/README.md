@@ -598,3 +598,24 @@ could erase it. Upstream Resin was 12-24% SLOWER than both. Not covered: TTFT,
 batch>1 and throughput, speculative decoding (MTP) for any engine, SGLang/vLLM
 tuning flags, other hardware, long contexts (global layers fall back to FlashInfer
 above 1K tokens of graph capacity), or end-to-end serving (HTTP/tokenization).
+
+## Logit-level long-generation check (full configuration vs upstream path)
+
+`b200-resin-logit-longgen.json`, run ap-mEOyFzj0hOwDsSDJCWxebn: three fresh engines in
+one container (upstream, upstream again, full = all four changes), real WildChat-derived
+prompts at ctx 256/512/1024, 145 decode steps each (435 per engine), top-5 logits
+recorded after every step through a synchronizing diagnostic hook (timings from this run
+are invalid; only logits are used).
+- **Determinism:** upstream vs upstream is bitwise identical (top-5 ids and values, max
+  |d| 0.000 on all 435 steps). So any difference below is caused by our changes.
+- **Full vs upstream:** all 145 greedy tokens identical on every prompt; **0 top-1 flips
+  in 435 steps**; top-1 logit |d| max 0.25 / 0.47 / 0.63 (ctx 256 / 1024 / 512), medians
+  0 / 0.031 / 0 (a BF16 step is 0.125 at logit magnitudes 16-32, 0.25 at 32-64); the full
+  top-5 id list differs on 56 of 435 steps (13%), i.e. ordering of low-ranked
+  candidates shifts, never the winner.
+- Exact BF16 ties between the top two logits (margin 0.000) occur in the baseline at
+  some steps; both configurations picked the same token each time, so tie-breaking
+  agreed there, but a tie is exactly where a numerically different path COULD flip a
+  greedy token. Not observed in these 435 steps; 3 prompts is still a small sample.
+Remaining numeric gaps: no run against a high-precision (fp32/fp64) end-to-end oracle,
+no sampling (temperature>0) or long-context (>1K) comparison.
