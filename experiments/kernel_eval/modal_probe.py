@@ -61,7 +61,7 @@ def probe():
                             'sample_mismatch_count': (abs_error != 0).sum().item(),
                             'baseline_us_per_call_batches': times})
     return {'status': 'calibration_only', 'gpu_qualified': False,
-            'candidate': None, 'gpu': name, 'torch': torch.__version__,
+            'candidate': None, 'gpu': name, 'torch': str(torch.__version__),
             'cuda': torch.version.cuda, 'capability': torch.cuda.get_device_capability(),
             'results': results}
 

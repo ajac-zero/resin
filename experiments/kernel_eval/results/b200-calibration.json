@@ -1,0 +1,92 @@
+{
+  "status": "calibration_only",
+  "gpu_qualified": false,
+  "candidate": null,
+  "gpu": "NVIDIA B200",
+  "torch": "2.13.0+cu130",
+  "cuda": "13.0",
+  "capability": [
+    10,
+    0
+  ],
+  "results": [
+    {
+      "rows": 1,
+      "width": 6144,
+      "sample_max_abs_error": 0.0,
+      "sample_mismatch_count": 0,
+      "baseline_us_per_call_batches": [
+        6.618239879608154,
+        6.483520269393921,
+        6.44864022731781,
+        7.520319819450378,
+        6.425920128822327
+      ]
+    },
+    {
+      "rows": 7,
+      "width": 6144,
+      "sample_max_abs_error": 0.0,
+      "sample_mismatch_count": 0,
+      "baseline_us_per_call_batches": [
+        6.48032009601593,
+        6.454399824142456,
+        6.4847999811172485,
+        6.472319960594177,
+        6.466879844665527
+      ]
+    },
+    {
+      "rows": 33,
+      "width": 6144,
+      "sample_max_abs_error": 0.0,
+      "sample_mismatch_count": 0,
+      "baseline_us_per_call_batches": [
+        6.514880061149597,
+        6.377919912338257,
+        6.325439810752869,
+        6.365759968757629,
+        6.346240043640137
+      ]
+    },
+    {
+      "rows": 1,
+      "width": 12288,
+      "sample_max_abs_error": 0.0,
+      "sample_mismatch_count": 0,
+      "baseline_us_per_call_batches": [
+        6.450560092926025,
+        6.402879953384399,
+        6.3891202211380005,
+        6.38975977897644,
+        6.393600106239319
+      ]
+    },
+    {
+      "rows": 7,
+      "width": 12288,
+      "sample_max_abs_error": 0.0,
+      "sample_mismatch_count": 0,
+      "baseline_us_per_call_batches": [
+        7.584959864616394,
+        6.396480202674866,
+        6.351040005683899,
+        6.408960223197937,
+        7.117120027542114
+      ]
+    },
+    {
+      "rows": 33,
+      "width": 12288,
+      "sample_max_abs_error": 0.0,
+      "sample_mismatch_count": 0,
+      "baseline_us_per_call_batches": [
+        6.463040113449097,
+        6.49728000164032,
+        6.541759967803955,
+        6.406400203704834,
+        6.4547199010849
+      ]
+    }
+  ]
+}

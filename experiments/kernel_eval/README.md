@@ -86,3 +86,20 @@ or a bound on image build costs. Establish account budget/total run limit before
 launch. Rust kernel implementation, existing Triton comparison, sanitizer and
 changed-input CUDA graph replay remain subsequent GPU gates. No speedup or GPU
 qualification may be inferred from this scaffold.
+
+## First B200 calibration executed (2026-11-20 UTC)
+
+`results/b200-calibration.json` records the first successful GPU run:
+NVIDIA B200, capability 10.0, torch 2.13.0+cu130 (runtime CUDA 13.0 inside
+CUDA 13.3.1 devel base). All six shapes' 257-element samples matched the scalar
+spec exactly. This is sampled evidence, not exhaustive numerical qualification.
+Unfused eager PyTorch baseline batch medians were 6.37–6.48 us/call. These are
+launch/allocation-inclusive microbenchmarks, not pure kernel or model latency.
+
+Run: https://modal.com/apps/ajac-zero/main/ap-bMLio3K1Q4YCQ1nxxUbAGx
+The preceding attempt finished computation but failed local deserialization:
+TorchVersion is a torch-defined str subclass. Converting version metadata to a
+plain str fixed it without installing PyTorch locally. Both ephemeral apps were
+confirmed stopped with zero tasks. Billing summary is workspace-wide and delayed;
+it is not an exact per-run cost receipt. No model weights or persistent volumes
+were created. $5 total qualification authorization remains the phase limit.
