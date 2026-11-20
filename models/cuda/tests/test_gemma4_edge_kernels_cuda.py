@@ -13,6 +13,7 @@ from resin_models_cuda.gemma4.edge_kernels import (
     gate_up_gelu_m1,
     gelu_tanh_mul,
     linear_m1,
+    paged_decode_q1,
     linear_gelu,
     norm_residual,
     sparse_gather_dot,
@@ -674,3 +675,97 @@ def test_m1_helpers_fall_back_outside_their_contract():
     gate = torch.nn.Linear(1536, 6144, bias=False, dtype=torch.bfloat16, device="cuda")
     assert gate_up_gelu_m1(gate, gate, x) is None
     assert gate_up_gelu_m1(gate, gate, x[:1].float()) is None
+
+
+def _paged_oracle(query, keys, values, pages, length, window):
+    width = query.shape[-1]
+    flat_keys = keys[pages.long()].reshape(-1, width)[:length].double()
+    flat_values = values[pages.long()].reshape(-1, width)[:length].double()
+    first = max(0, length - 1 - window) if window >= 0 else 0
+    scores = query.double() @ flat_keys[first:].T
+    return torch.softmax(scores, dim=-1) @ flat_values[first:]
+
+
+def _paged_batch(lengths, width, *, page=64, seed=0):
+    generator = torch.Generator(device="cuda").manual_seed(seed)
+    total = sum((n + page - 1) // page for n in lengths) + 5
+    keys = torch.randn(total, page, 1, width, dtype=torch.bfloat16, device="cuda", generator=generator)
+    values = torch.randn_like(keys)
+    pool = torch.randperm(total, device="cuda", generator=generator).to(torch.int32)
+    spans, cursor = [], 0
+    for n in lengths:
+        count = (n + page - 1) // page
+        spans.append(pool[cursor : cursor + count])
+        cursor += count
+    indptr = torch.tensor([0, *torch.tensor([len(x) for x in spans]).cumsum(0).tolist()], dtype=torch.int32, device="cuda")
+    indices = torch.cat(spans).contiguous()
+    last = torch.tensor([n - (len(x) - 1) * page for n, x in zip(lengths, spans)], dtype=torch.int32, device="cuda")
+    query = torch.randn(len(lengths), 8, width, dtype=torch.bfloat16, device="cuda", generator=generator)
+    return keys, values, query, indptr, indices, last, spans
+
+
+@pytest.mark.parametrize("width,window", [(256, 511), (256, -1), (512, -1), (512, 127)])
+@torch.inference_mode()
+def test_paged_decode_matches_fp64_oracle(width, window):
+    from flashinfer import BatchDecodeWithPagedKVCacheWrapper
+
+    lengths = [1, 63, 64, 65, 300, 511, 512, 513, 1500]
+    keys, values, query, indptr, indices, last, spans = _paged_batch(lengths, width, seed=width + window)
+    workspace = torch.empty(128 * 1024 * 1024, dtype=torch.uint8, device="cuda")
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(workspace, "NHD", backend="fa2", use_tensor_cores=True)
+    wrapper.plan(indptr, indices, last, 8, 1, width, 64, window_left=window,
+                 q_data_type=torch.bfloat16, kv_data_type=torch.bfloat16, o_data_type=torch.bfloat16,
+                 sm_scale=1.0, pos_encoding_mode="NONE")
+    reference = wrapper.run(query, (keys, values))
+    actual = paged_decode_q1(query, keys, values, indptr, indices, last, window_left=window, page_size=64)
+    assert actual.shape == query.shape and torch.isfinite(actual).all()
+    for row, (length, pages) in enumerate(zip(lengths, spans)):
+        oracle = _paged_oracle(query[row], keys, values, pages, length, window)
+        mine = (actual[row].double() - oracle).abs().max()
+        flashinfer = (reference[row].double() - oracle).abs().max()
+        assert mine <= flashinfer * 1.25 + 1e-3, (length, mine.item(), flashinfer.item())
+        assert mine <= 0.03
+
+
+@torch.inference_mode()
+def test_paged_decode_graph_reads_changed_lengths_and_tables_and_pads_safely():
+    width, window = 256, 511
+    keys, values, query, indptr, indices, last, spans = _paged_batch([200, 700], width, seed=3)
+    capacity = torch.zeros(64, dtype=torch.int32, device="cuda")
+    capacity[: len(indices)] = indices
+    indptr_buffer = torch.cat((indptr, indptr[-1:])).contiguous()  # third request has zero pages
+    last_buffer = torch.cat((last, last[-1:] * 0)).contiguous()
+    query3 = torch.cat((query, query[:1])).contiguous()
+
+    def operation():
+        return paged_decode_q1(query3, keys, values, indptr_buffer, capacity, last_buffer, window_left=window, page_size=64)
+
+    graph, captured = _capture(operation)
+    assert torch.count_nonzero(captured[2]) == 0  # padded empty row stays zero
+    for lengths, seed in (([64, 129], 5), ([450, 33], 6)):
+        generator = torch.Generator(device="cuda").manual_seed(seed)
+        order = torch.randperm(keys.shape[0], device="cuda", generator=generator).to(torch.int32)
+        counts = [(n + 63) // 64 for n in lengths]
+        new_spans = [order[: counts[0]], order[counts[0] : counts[0] + counts[1]]]
+        capacity.zero_()
+        capacity[: sum(counts)] = torch.cat(new_spans)
+        indptr_buffer.copy_(torch.tensor([0, counts[0], sum(counts), sum(counts)], dtype=torch.int32))
+        last_buffer.copy_(torch.tensor([lengths[0] - (counts[0] - 1) * 64, lengths[1] - (counts[1] - 1) * 64, 0], dtype=torch.int32))
+        query3.copy_(torch.randn_like(query3))
+        graph.replay()
+        torch.cuda.synchronize()
+        for row in range(2):
+            oracle = _paged_oracle(query3[row], keys, values, new_spans[row], lengths[row], window)
+            assert (captured[row].double() - oracle).abs().max() <= 0.03
+        assert torch.count_nonzero(captured[2]) == 0
+
+
+@torch.inference_mode()
+def test_paged_decode_rejects_unsupported_inputs():
+    keys, values, query, indptr, indices, last, _ = _paged_batch([100], 256)
+    with pytest.raises(ValueError):
+        paged_decode_q1(query.float(), keys, values, indptr, indices, last, window_left=-1, page_size=64)
+    with pytest.raises(ValueError):
+        paged_decode_q1(query, keys, values, indptr.long(), indices, last, window_left=-1, page_size=64)
+    with pytest.raises(ValueError):
+        paged_decode_q1(query[..., :128].contiguous(), keys[..., :128], values[..., :128], indptr, indices, last, window_left=-1, page_size=64)

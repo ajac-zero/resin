@@ -154,6 +154,92 @@ def gate_up_gelu_m1(gate_proj, up_proj, x: Tensor) -> Tensor | None:
     return output
 
 
+# (splits, block_n, num_warps, num_stages) per head width, chosen from the B200 sweep
+# (experiments/kernel_eval/results/b200-paged-decode-study.json): within ~2-3% of the
+# best config at every swept length. Global layers beat FlashInfer only up to ~1K
+# tokens; callers gate on _PAGED_DECODE_GLOBAL_MAX_TOKENS.
+_PAGED_DECODE = {256: (16, 32, 4, 3), 512: (16, 32, 4, 3)}
+_PAGED_DECODE_GLOBAL_MAX_TOKENS = 1024
+_PAGED_DECODE_WORKSPACE: dict = {}
+
+
+def paged_decode_q1(
+    query: Tensor,
+    keys: Tensor,
+    values: Tensor,
+    indptr: Tensor,
+    indices: Tensor,
+    last_lengths: Tensor,
+    *,
+    window_left: int,
+    page_size: int,
+    config: tuple[int, int, int, int] | None = None,
+) -> Tensor:
+    """Single-token paged attention for one shared KV head (Gemma Edge decode).
+
+    ``query`` is ``[requests, heads, width]`` BF16 with at most 16 heads sharing
+    the KV head; ``keys``/``values`` are NHD page views ``[pages, page, 1, width]``
+    with unit channel stride. ``window_left`` below zero means full history. The
+    softmax scale is 1.0 (Gemma normalizes Q/K), the query is the last readable
+    token, and no logit softcap is applied. Kernel launches use only fixed grids
+    and read CSR lengths on the device, so they replay in CUDA graphs.
+    """
+    requests, heads, width = query.shape
+    if (
+        not query.is_cuda
+        or query.dtype != torch.bfloat16
+        or keys.dtype != torch.bfloat16
+        or values.dtype != torch.bfloat16
+        or query.stride(2) != 1
+        or query.stride(1) != width
+        or keys.ndim != 4
+        or keys.shape[1:] != (page_size, 1, width)
+        or values.shape[1:] != (page_size, 1, width)
+        or keys.stride(3) != 1
+        or values.stride(3) != 1
+        or heads > 16
+        or width not in _PAGED_DECODE
+        or any(
+            tensor.dtype != torch.int32 or not tensor.is_cuda or not tensor.is_contiguous()
+            for tensor in (indptr, indices, last_lengths)
+        )
+        or len(indptr) != requests + 1
+        or len(last_lengths) != requests
+    ):
+        raise ValueError("paged decode requires CUDA BF16 single-KV-head NHD inputs")
+    splits, block_n, warps, stages = config or _PAGED_DECODE[width]
+    key = (query.device, requests, width, splits)
+    workspace = _PAGED_DECODE_WORKSPACE.get(key)
+    if workspace is None:
+        workspace = (
+            torch.empty(requests * splits * 16 * width, dtype=torch.float32, device=query.device),
+            torch.empty(requests * splits * 16 * 2, dtype=torch.float32, device=query.device),
+        )
+        _PAGED_DECODE_WORKSPACE[key] = workspace
+    from resin_models_cuda.gemma4.edge_kernels_triton import launch_paged_decode
+
+    output = torch.empty_like(query)
+    launch_paged_decode(
+        query,
+        keys,
+        values,
+        indptr,
+        indices,
+        last_lengths,
+        output,
+        workspace[0],
+        workspace[1],
+        window_left=window_left,
+        page=page_size,
+        heads=heads,
+        splits=splits,
+        block_n=block_n,
+        num_warps=warps,
+        num_stages=stages,
+    )
+    return output
+
+
 def gelu_tanh_mul(gate: Tensor, up: Tensor) -> Tensor:
     """Fuse GELU and multiply while retaining the BF16 GELU output round."""
     if (
@@ -350,6 +436,7 @@ __all__ = [
     "gelu_tanh_mul",
     "linear_m1",
     "gate_up_gelu_m1",
+    "paged_decode_q1",
     "strided_qk_rmsnorm_rope",
     "norm_residual",
     "UniformCausalPagedVerifyWrapper",

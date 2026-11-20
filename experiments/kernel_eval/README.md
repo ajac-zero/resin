@@ -503,3 +503,61 @@ paired difference (~0.25-0.27 ms at every context, consistent with the synthetic
 result) is informative. Prefill timings in the same runs are noise-level
 (7.7-17.5 ms across identical configurations; n=3): a bimodal prefill result
 has appeared in three separate runs and is unexplained.
+
+## Split-KV paged decode attention, clean interleaved A/B, and vLLM baseline
+
+**Attention kernel (fork):** the profile showed FlashInfer's q=1 decode launching a
+single CTA per layer (8 query heads share one KV head), ~10 us per layer in an L2-cold
+isolated study (`modal_resin_baseline.py --attn ...`, results `b200-paged-decode-study.json`;
+35 distinct synthetic KV layers rotated per graph, one request, FlashInfer decode wrapper
+built exactly as Resin builds it). `paged_decode_q1` (`edge_kernels.py`,
+`edge_kernels_triton.py`) splits the visible KV range over 16 CTAs and merges the partial
+softmax states in a second tiny kernel. Page tables, last-page lengths and the sliding
+window are read from the same device buffers FlashInfer reads, so it replays in the
+existing decode CUDA graph. fp64-oracle max error was equal to or below FlashInfer's at
+every swept length (e.g. 0.0074-0.0085 vs 0.0074-0.0150).
+Isolated speed vs FlashInfer: local layers (head width 256, window) x1.7-2.0
+(~10.2 -> 5-6 us); global layers (width 512) x1.3-1.65 up to ~1K tokens, tie at 2K,
+**slower at 4K (x0.72)**. Therefore global layers use the kernel only when the graph's
+page capacity is <= 1,024 tokens; everything else (prefill, verification, long global
+history, host plans) runs FlashInfer unchanged. Only the draft-free single-query decode
+path is covered.
+Tests: 6 new B200 pytest cases pass (fp64 oracle vs FlashInfer error over lengths
+1/63/64/65/300/511/512/513/1500, window and full history, widths 256/512; CUDA graph
+replayed after changing lengths and page tables in place; a zero-page padded row stays
+zero; unsupported inputs rejected), Modal run ap-otC4vXBflGHdPkYdUpSazB.
+
+**Clean A/B (fresh engine per run, one container, two interleaved rounds, decode-only
+graphs, WildChat-derived prompts, 48 timed steps, no diagnostic hook)**, results
+`b200-resin-ab-interleaved.json`, run ap-WPCVIhGCFQCFsoMkdqJxCd. Median decode ms/token,
+mean of the two rounds (rounds agree within ~3 us except where noted):
+
+| config | ctx 256 | ctx 1024 |
+|---|---:|---:|
+| upstream path | 3.078 | 3.495 |
+| + fused GELU*up | 2.969 (-3.5%) | 3.389 (-3.0%) |
+| + M=1 projection/gate-up kernels | 2.692 (-12.6%) | 3.112 (-11.0%) |
+| + split-KV attention | **2.516 (-18.3%)** | **2.826 (-19.1%)** |
+
+All 54 generated tokens are identical across all four configurations, both prompts and
+both rounds (graph replays 48/48, zero eager fallbacks). Caveats: two prompts only
+(real WildChat text, code/paste heavy), batch 1, greedy, draft 0, one B200 container;
+one run showed a 0.9 ms min/3.8 ms max spread in a single window (round 2 fusedgelu
+ctx1024 median unaffected). Logit-level comparison of the full configuration against
+upstream on long generations is still outstanding.
+
+**vLLM 0.34.0 baseline** (`modal_engines.py`; same pinned checkpoint and the same six
+real prompts as token IDs, bf16, greedy, prefix caching off, default CUDA graphs,
+`max_model_len` 2048, one B200; `b200-vllm-baseline.json`, run
+ap-f2B0iaRPmFtC2Pp7pVL1NW): decode **2.85-2.95 ms/token** (ctx 128-1024), derived by
+differencing end-to-end `generate` times at 8 and 72 output tokens (5 alternating
+repeats each), so it includes vLLM's scheduler/host overhead. Its first 22 greedy
+tokens equal Resin's on all six prompts.
+Comparison (different measurement methods - vLLM end-to-end wall differencing vs Resin's
+harness step interval - so treat as approximate): at ctx 256 vLLM 2.85 vs Resin upstream
+3.08 (Resin 8% slower), optimized Resin 2.52 (12% faster than vLLM); at ctx 1024 vLLM
+2.95 vs upstream 3.50 (Resin 18% slower) vs optimized 2.83 (4% faster). Resin's lead
+over vLLM at 1024 is small enough that method differences could erase it. vLLM runs
+here were default-configured; its speculative-decoding (MTP) mode and tuning flags
+were not explored, and TTFT, batch>1, throughput and SGLang were not compared in this
+step.

@@ -492,3 +492,180 @@ def launch_gate_up_gelu_m1(x, gate_weight, up_weight, output, *, block_n, block_
         num_warps=num_warps,
         enable_fp_fusion=False,
     )
+
+
+@triton.jit
+def _paged_decode_partial(
+    query,
+    keys,
+    values,
+    indptr,
+    indices,
+    last_lengths,
+    partial_acc,
+    partial_ml,
+    window_left,
+    query_request_stride,
+    key_page_stride,
+    key_slot_stride,
+    value_page_stride,
+    value_slot_stride,
+    GROUP: tl.constexpr,
+    HEAD_PAD: tl.constexpr,
+    D: tl.constexpr,
+    PAGE: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    SPLITS: tl.constexpr,
+):
+    """One KV chunk of single-query attention for all query heads sharing one KV head."""
+    request = tl.program_id(0)
+    split = tl.program_id(1)
+    page_begin = tl.load(indptr + request)
+    page_count = tl.load(indptr + request + 1) - page_begin
+    length = (page_count - 1) * PAGE + tl.load(last_lengths + request)
+    length = tl.where(page_count > 0, length, 0)
+    # The decode query is the final readable token; keys older than window_left are hidden.
+    first = tl.where(window_left >= 0, tl.maximum(length - 1 - window_left, 0), 0)
+    visible = tl.maximum(length - first, 0)
+    chunk = ((visible + SPLITS - 1) // SPLITS + BLOCK_N - 1) // BLOCK_N * BLOCK_N
+    start = first + split * chunk
+    end = tl.minimum(start + chunk, length)
+    heads = tl.arange(0, HEAD_PAD)
+    channels = tl.arange(0, D)
+    head_valid = heads < GROUP
+    q = tl.load(
+        query + request * query_request_stride + heads[:, None] * D + channels[None, :],
+        mask=head_valid[:, None],
+        other=0,
+    )
+    running_max = tl.full([HEAD_PAD], float("-inf"), tl.float32)
+    running_sum = tl.zeros([HEAD_PAD], tl.float32)
+    accumulator = tl.zeros([HEAD_PAD, D], tl.float32)
+    for block in range(start, end, BLOCK_N):
+        tokens = block + tl.arange(0, BLOCK_N)
+        token_valid = tokens < end
+        pages = tl.load(indices + page_begin + tokens // PAGE, mask=token_valid, other=0)
+        slots = tokens % PAGE
+        key_tile = tl.load(
+            keys
+            + pages[:, None].to(tl.int64) * key_page_stride
+            + slots[:, None] * key_slot_stride
+            + channels[None, :],
+            mask=token_valid[:, None],
+            other=0,
+        )
+        scores = tl.dot(q, tl.trans(key_tile))
+        scores = tl.where(token_valid[None, :], scores, float("-inf"))
+        new_max = tl.maximum(running_max, tl.max(scores, axis=1))
+        safe_max = tl.where(new_max == float("-inf"), 0.0, new_max)
+        probability = tl.exp(scores - safe_max[:, None])
+        scale = tl.exp(running_max - safe_max)
+        running_sum = running_sum * scale + tl.sum(probability, axis=1)
+        value_tile = tl.load(
+            values
+            + pages[:, None].to(tl.int64) * value_page_stride
+            + slots[:, None] * value_slot_stride
+            + channels[None, :],
+            mask=token_valid[:, None],
+            other=0,
+        )
+        accumulator = accumulator * scale[:, None] + tl.dot(
+            probability.to(tl.bfloat16), value_tile
+        )
+        running_max = new_max
+    base = (request * SPLITS + split) * HEAD_PAD
+    tl.store(
+        partial_acc + (base + heads[:, None]) * D + channels[None, :],
+        accumulator,
+    )
+    tl.store(partial_ml + (base + heads) * 2, running_max)
+    tl.store(partial_ml + (base + heads) * 2 + 1, running_sum)
+
+
+@triton.jit
+def _paged_decode_merge(
+    partial_acc,
+    partial_ml,
+    output,
+    output_request_stride,
+    HEAD_PAD: tl.constexpr,
+    D: tl.constexpr,
+    SPLITS: tl.constexpr,
+):
+    request = tl.program_id(0)
+    head = tl.program_id(1)
+    channels = tl.arange(0, D)
+    best = float("-inf")
+    for split in tl.static_range(SPLITS):
+        best = tl.maximum(
+            best, tl.load(partial_ml + ((request * SPLITS + split) * HEAD_PAD + head) * 2)
+        )
+    safe_best = tl.where(best == float("-inf"), 0.0, best)
+    total = 0.0
+    result = tl.zeros([D], tl.float32)
+    for split in tl.static_range(SPLITS):
+        base = (request * SPLITS + split) * HEAD_PAD + head
+        weight = tl.exp(tl.load(partial_ml + base * 2) - safe_best)
+        total += weight * tl.load(partial_ml + base * 2 + 1)
+        result += weight * tl.load(partial_acc + base * D + channels)
+    result = tl.where(total > 0, result / tl.where(total > 0, total, 1.0), 0.0)
+    tl.store(
+        output + request * output_request_stride + head * D + channels,
+        result.to(tl.bfloat16),
+    )
+
+
+def launch_paged_decode(
+    query,
+    keys,
+    values,
+    indptr,
+    indices,
+    last_lengths,
+    output,
+    partial_acc,
+    partial_ml,
+    *,
+    window_left,
+    page,
+    heads,
+    splits,
+    block_n,
+    num_warps,
+    num_stages,
+):
+    requests, _, width = query.shape
+    cast(Any, _paged_decode_partial)[(requests, splits)](
+        query,
+        keys,
+        values,
+        indptr,
+        indices,
+        last_lengths,
+        partial_acc,
+        partial_ml,
+        window_left,
+        query.stride(0),
+        keys.stride(0),
+        keys.stride(1),
+        values.stride(0),
+        values.stride(1),
+        GROUP=heads,
+        HEAD_PAD=16,
+        D=width,
+        PAGE=page,
+        BLOCK_N=block_n,
+        SPLITS=splits,
+        num_warps=num_warps,
+        num_stages=num_stages,
+    )
+    cast(Any, _paged_decode_merge)[(requests, heads)](
+        partial_acc,
+        partial_ml,
+        output,
+        output.stride(0),
+        HEAD_PAD=16,
+        D=width,
+        SPLITS=splits,
+        num_warps=4,
+    )

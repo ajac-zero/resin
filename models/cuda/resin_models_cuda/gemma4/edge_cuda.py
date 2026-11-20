@@ -258,6 +258,42 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
             )
         return wrappers
 
+    def _decode_attention(self, wrapper, plan, is_local, query, keys, values):
+        """Use the split-KV q=1 kernel on the captured non-speculative decode path.
+
+        Every other case (prefill, verification, long global history, host plans)
+        runs FlashInfer exactly as before.
+        """
+        from flashinfer import BatchDecodeWithPagedKVCacheWrapper
+
+        from resin_models_cuda.gemma4 import edge_kernels
+
+        indptr = getattr(plan, "kv_indptr", None)
+        if (
+            isinstance(wrapper, BatchDecodeWithPagedKVCacheWrapper)
+            and torch.is_tensor(indptr)
+            and indptr.is_cuda
+            and query.ndim == 3
+            and query.shape[0] == len(indptr) - 1
+            and query.shape[-1] in edge_kernels._PAGED_DECODE
+            and keys.ndim == 4
+            and keys.shape[2] == 1
+        ):
+            rows = len(indptr) - 1
+            capacity = len(plan.page_indices) // max(rows, 1) * PAGE_SIZE
+            if is_local or capacity <= edge_kernels._PAGED_DECODE_GLOBAL_MAX_TOKENS:
+                return edge_kernels.paged_decode_q1(
+                    query,
+                    keys,
+                    values,
+                    indptr,
+                    plan.page_indices,
+                    plan.last_page_lengths,
+                    window_left=self.sliding_window - 1 if is_local else -1,
+                    page_size=PAGE_SIZE,
+                )
+        return wrapper.run(query, (keys, values))
+
     def _merge_media_embeddings(self, native, batch, hidden):
         if any(media is not None for media in getattr(native, "media", ())):
             raise ValueError("Gemma 4 E2B runner currently accepts text inputs only")
@@ -325,7 +361,14 @@ class Gemma4EdgeCudaRunner(Gemma4CudaRunner):
             if key is not None:
                 keys[pages, offsets] = key.to(self._cache.dtype)
                 values[pages, offsets] = value.to(self._cache.dtype)
-            attended = wrapper.run(query, (keys, values))
+            attended = self._decode_attention(
+                wrapper,
+                local if layer.self_attn.layer_type == SLIDING_ATTENTION else global_,
+                layer.self_attn.layer_type == SLIDING_ATTENTION,
+                query,
+                keys,
+                values,
+            )
             hidden = linear_m1(
                 layer.self_attn.o_proj, attended.reshape(len(hidden), -1)
             )
