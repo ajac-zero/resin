@@ -32,16 +32,44 @@ def qualify():
                          text=True,capture_output=True,timeout=20)
         if r.returncode:
             return {'status':'rust_failed','stderr':r.stderr[-12000:]}
-        out=torch.tensor(json.loads(r.stdout)['output'],dtype=torch.bfloat16,device='cuda')
+        rust_report=json.loads(r.stdout)
+        out=torch.tensor(rust_report['output'],dtype=torch.bfloat16,device='cuda')
         ref=F.gelu(g, approximate='tanh')*u
         tri=torch.empty_like(g)
         comparator.launch_gelu_tanh_mul(g,u,tri)
         torch.cuda.synchronize()
         error=(out.float()-ref.float()).abs()
+        timings={}
+        for label, fn in [('pytorch', lambda: F.gelu(g, approximate='tanh')*u),
+                          ('triton', lambda: comparator.launch_gelu_tanh_mul(g,u,tri))]:
+            for _ in range(10): fn()
+            torch.cuda.synchronize()
+            graph=torch.cuda.CUDAGraph()
+            with torch.cuda.graph(graph):
+                for _ in range(100): fn()
+            graph.replay()
+            torch.cuda.synchronize()
+            measured=[]
+            for _ in range(5):
+                a,b=torch.cuda.Event(enable_timing=True),torch.cuda.Event(enable_timing=True)
+                a.record(); graph.replay(); b.record(); b.synchronize()
+                measured.append(a.elapsed_time(b)*1000/100)
+            timings[label]=measured
+        timings['rust']=rust_report['graph_us_per_call']
         reports.append({'elements':n,'mismatch_count':(out!=ref).sum().item(),
                         'max_abs_error':error.max().item(),
-                        'triton_mismatch_count':(out!=tri).sum().item()})
-    return {'status':'numerical_probe_only', 'gpu':torch.cuda.get_device_name(),
+                        'triton_mismatch_count':(out!=tri).sum().item(), 'graph_us_per_call':timings})
+    import shutil
+    sanitizer={'status':'unavailable'}
+    if shutil.which('compute-sanitizer'):
+        request=json.dumps({'gate':[1.0]*257, 'up':[0.5]*257})+'\n'
+        checked=subprocess.run(['compute-sanitizer','--tool','memcheck','--error-exitcode','99',
+                                '/opt/rust/target/release/resin-gelu-probe'],
+                               input=request,text=True,capture_output=True,timeout=45)
+        sanitizer={'status':'passed' if checked.returncode==0 else 'failed',
+                   'returncode':checked.returncode,'stdout':checked.stdout[-2000:],
+                   'stderr':checked.stderr[-4000:]}
+    return {'sanitizer':sanitizer,'status':'numerical_probe_only' , 'gpu':torch.cuda.get_device_name(),
             'results':reports,'gpu_qualified':False, 'performance':None}
 
 @app.local_entrypoint()

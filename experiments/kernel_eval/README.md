@@ -130,3 +130,27 @@ Next gate: persistent owned buffers + CUDA event/graph timing inside Rust, paire
 with PyTorch/Triton timing in the same B200 run; changed-input replay, nonfinite
 and tail probes, Compute Sanitizer. The Rust kernel is not wired into Resin's
 runner and is not agent-editable code executing under an immutable trusted judge.
+
+## Preliminary graph timing and memory check
+
+`results/b200-graph-timing.json` records five event-timed replays of a graph
+containing 100 calls on stable owned buffers, after JIT/capture/warmup. Copies,
+allocation and process startup are excluded. PyTorch, Triton and Rust run on the
+same B200, but Rust owns a separate process/context. Fixed execution order and
+separate contexts mean these are preliminary observations, not a frozen fair
+benchmark or serving speedup. Tiny 1/7/257-element cases are tail/launch probes,
+not actual model widths. No tuning sweep or held-out evaluation yet.
+
+Median us per call (PyTorch / Triton / Rust):
+- 6144 elements: 2.106 / 1.614 / 1.467
+- 12288 elements: 2.440 / 1.774 / 1.484
+
+All five shapes still have zero numerical mismatches against both comparators.
+Compute Sanitizer memcheck on the 257-element Rust case returned exit0 and
+ERROR SUMMARY: 0 errors. This is one tail case, not racecheck/initcheck/soak
+qualification. Sanitized timings in its raw output are invalid for comparison.
+
+Run: https://modal.com/apps/ajac-zero/main/ap-RKTpZlwSkStsyVkAzya24t
+All phase apps confirmed stopped with zero tasks. Delayed workspace ephemeral
+meter is $2.26 (previous $2.23); exact phase charges remain unsettled. Existing
+$5 total phase authorization applies. No production integration or main merge.

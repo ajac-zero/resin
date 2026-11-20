@@ -40,9 +40,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut out = api::zeros::<bf16>(&[n]).sync_on(&stream)?;
         kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
             .generics(vec!["256".into()]).sync_on(&stream)?;
+        let graph = cutile::cuda_async::cuda_graph::CudaGraph::scope(&stream, |scope| {
+            for _ in 0..100 {
+                scope.record(kernels::gelu_mul(&g, &u, (&mut out).partition([256]))
+                    .generics(vec!["256".into()]))?;
+            }
+            Ok(())
+        })?;
+        graph.launch().sync_on(&stream)?;
+        let mut timings = Vec::new();
+        for _ in 0..5 {
+            let start = stream.device().new_event()?;
+            let end = Arc::new(stream.device().new_event()?);
+            let end_op = end.clone();
+            start.record(&stream)?;
+            graph.launch().and_then_with_context(move |ctx, _| {
+                value(end_op.record(ctx.get_cuda_stream()))
+            }).sync_on(&stream)??;
+            end.synchronize()?;
+            timings.push(start.elapsed_time(&end)? as f64 * 1000.0 / 100.0);
+        }
         let host = out.to_host_vec().sync_on(&stream)?;
         let values: Vec<f32> = host.iter().map(|x| x.to_f32()).collect();
-        println!("{}", serde_json::json!({"output": values}));
+        println!("{}", serde_json::json!({"output": values, "graph_us_per_call": timings}));
     }
     Ok(())
 }
